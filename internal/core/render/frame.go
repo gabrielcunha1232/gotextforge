@@ -1,0 +1,70 @@
+package render
+
+
+type ColorKind uint8
+const(
+	ColorDefault ColorKind = iota
+	ColorANSI
+	ColorRGB
+)
+
+var (
+	ColorBlack   = ANSI(0)
+	ColorRed     = ANSI(1)
+	ColorGreen   = ANSI(2)
+	ColorYellow  = ANSI(3)
+	ColorBlue    = ANSI(4)
+	ColorMagenta = ANSI(5)
+	ColorCyan    = ANSI(6)
+	ColorWhite   = ANSI(7)
+
+	ColorBrightBlack   = ANSI(8)
+	ColorBrightRed     = ANSI(9)
+	ColorBrightGreen   = ANSI(10)
+	ColorBrightYellow  = ANSI(11)
+	ColorBrightBlue    = ANSI(12)
+	ColorBrightMagenta = ANSI(13)
+	ColorBrightCyan    = ANSI(14)
+	ColorBrightWhite   = ANSI(15)
+)
+
+type Color struct {
+	Kind ColorKind
+	Index uint8
+	R, G, B uint8
+}
+
+type Style struct {
+	Fg Color
+	Bg Color
+	Bold bool
+	Italic bool
+	Underline bool
+	Undercurl bool
+}
+
+type Span struct{
+	Text string
+	Style Style
+}
+
+type StyledLine []Span
+
+type ScreenPos struct {
+	Row int
+	Col int
+}
+
+type Frame struct {
+	Lines []StyledLine
+	Cursor ScreenPos
+	Status string
+}
+
+func ANSI(index uint8) Color {
+	return Color{Kind: ColorANSI, Index: index}
+}
+
+func RGB(r, g, b uint8) Color {
+	return Color{Kind: ColorRGB, R: r, G: g, B: b}
+}
