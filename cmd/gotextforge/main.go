@@ -3,5 +3,5 @@ package main
 import "fmt"
 
 func main() {
-	fmt.Print("Servidor rodando")
+	fmt.Println("gotextforge v0")
 }
