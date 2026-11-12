@@ -101,12 +101,8 @@ func (e *Editor) Frame() render.Frame {
 		})
 	}
 
-	firstVisible := start + 1
-	lastVisible := end
-	if total == 0 {
-		firstVisible = 0
-	}
-	status := fmt.Sprintf(" %s   %d-%d/%d", e.filename, firstVisible, lastVisible, total)
+	rawStatus := fmt.Sprintf(" %s   %d-%d/%d", e.filename, start+1, end, total)
+	status := view.FormatLine([]rune(rawStatus), e.width, view.DefaultTabStop)
 
 	return render.Frame{
 		Lines:  lines,
