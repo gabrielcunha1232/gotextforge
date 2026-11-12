@@ -5,7 +5,6 @@ import (
 	"github.com/gabrielcunha1232/gotextforge/internal/core/render"
 )
 
-
 type Editor struct {
 	lastKey input.Key
 	width   int
