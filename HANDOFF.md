@@ -4,22 +4,27 @@
 
 ## Estado atual (atualizado em 2026-11-12)
 
-**MS0 a MS4 concluídos, mais um visual estilo LazyVim.** O editor abre um arquivo pela linha de comando, ou sem argumento mostra uma tela inicial com logo, no terminal (Bubble Tea v2). Recursos atuais:
+**MS0 a MS5 concluídos, mais um visual estilo LazyVim.** O editor abre um arquivo pela linha de comando, ou sem argumento mostra uma tela inicial com logo, no terminal (Bubble Tea v2). Recursos atuais:
 - **Vim (MS4, engine em `internal/core/engine`):**
   - counts: `3j`, `2d3w`;
   - motions: `h j k l w W b B e E 0 ^ $ gg G f F t T { }`, setas, PgUp/PgDn;
   - operadores `d c y` com qualquer motion, e `dd cc yy`;
-  - text objects: `iw aw iW aW i" a" i' a' i` + "`" + ` a` + "`" + ` i( a( i[ a[ i{ a{ i< a< ip ap`;
+  - text objects: `iw aw iW aW i" a" i' a' i( a( i[ a[ i{ a{ i< a< ip ap`, mais a crase (raw string) em versão `i` e `a`;
   - atalhos `x X D C s S Y`, além de `p P J r`;
   - insert com `i a I A o O`, e undo/redo (`u`, Ctrl+r, com count).
 - **Arquivo:** salvar e sair (`:w :q :q! :wq :x`).
+- **gopls (MS5):**
+  - erros e avisos aparecem enquanto você digita: sublinhado ondulado colorido, mensagem `●` no fim da linha, número da linha colorido e `E2 W1` na status line;
+  - `K` abre o hover numa janela flutuante, com o código colorido e o markdown limpo;
+  - o completion abre um menu automático ao digitar (no início de uma palavra ou depois de `.`), com Ctrl+n/Ctrl+p ou setas para navegar, Enter/Tab/Ctrl+y para aceitar, Ctrl+e para fechar e Ctrl+Espaço para pedir manualmente;
+  - o indicador `gopls…` / `gopls` / `gopls!` na status line mostra o estado do servidor.
 - **Visual:** paleta truecolor inspirada no Tokyo Night (assume terminal escuro); números de linha relativos, com o da linha atual em laranja; destaque da linha do cursor; status line estilo lualine (modo colorido, arquivo `[+]`, comando pendente, `go`, progresso, linha:coluna); erros em vermelho; tela inicial com logo em degradê.
 
 O critério do MS2 foi verificado de ponta a ponta: o editor modifica o `main.go` de um módulo real, salva com `:wq`, e o `go build` e o binário rodam.
 
 Arquivos `.go` têm syntax highlight (MS3): palavras-chave, strings, números, comentários, identificadores predeclarados e nomes de função, com comentários de bloco e raw strings que atravessam linhas tratados corretamente.
 
-**Próximo:** MS5, gopls via LSP (diagnósticos, hover, completion). O posicionamento em UTF-16 fica só no cliente LSP (D3).
+**Próximo:** MS6, polimento (busca `/`, abas ou buffers, tema configurável) — "algo de postar no r/golang".
 
 ### Estrutura real (difere do ROADMAP, que ainda mostra `core/` na raiz)
 
@@ -31,9 +36,13 @@ internal/core/buffer/       [][]rune somente leitura; Load(io.Reader); LineEndin
 internal/core/view/         Viewport (clamp, EnsureVisible); layout único → FormatLine (texto) e RenderLine (spans com estilo); ScreenCol
 internal/core/syntax/       HighlightLine(linha, estado) via go/scanner; Cache de estado por linha + NextState (atalho exato)
 internal/core/storage/      Save atômico (tmp + Sync + Rename)
+internal/core/lsp/          cliente LSP próprio (D5): jsonrpc.go (Content-Length, ids, pedidos do servidor), protocol.go (tipos,
+                            UTF-16 ↔ rune SÓ aqui (D3), URIs no Windows), client.go (inicia o gopls de forma assíncrona, fila sem bloquear,
+                            agrupa mudanças de texto, eventos num canal, shutdown/exit/kill)
 internal/core/engine/       vim: Parser (gramática + estado pending, Pending() = showcmd), ApplyMotion, TextObject, ChangeWordTarget
 internal/core/editor/       editor.go (estado/eventos), normal.go (executa comandos da engine, registrador, p/J/r),
-                            insert.go, command.go (:w :q...), ui.go (Frame: gutter, cursorline, statusline), intro.go, theme.go
+                            insert.go, command.go (:w :q...), ui.go (Frame: gutter, cursorline, statusline), intro.go, theme.go,
+                            lsp.go (LanguageClient, HandleAsync), diagnostics.go, popup.go (hover/janelas), completion.go
 internal/frontend/tui/      TranslateKey (tea → input.Key), RenderFrame (Frame → string com SGR ANSI direto), model
 ```
 
@@ -99,7 +108,9 @@ O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda
    - Pendências pequenas, boas para o humano fazer: autoindent no Enter e no `o`; `:w outro.go`; abrir um arquivo inexistente como novo.
 3. ~~Milestone 3~~ ✅ e ~~Milestone 4~~ ✅. O critério do MS4 (`ciw`, `dap`, `dd` e counts) está coberto em `editor/vim_test.go`, com 66 sequências de teclas.
    - O que ficou fora do MS4 (bom para depois): `.` (repetir), `;`/`,`, modo visual, registradores nomeados (`"a`), marcas, `%`, `ge`, autoindent, count no `i`.
-   - **Próximo é o MS5, o gopls via LSP.**
+   - ~~Milestone 5~~ ✅. O critério ("erros do compilador em tempo real enquanto digita") está verificado com o gopls real em `editor/gopls_integration_test.go`.
+   - O que ficou fora do MS5: `gd` (ir para a definição), renomear, formatar ao salvar, sync incremental (hoje o texto inteiro vai a cada mudança, o que é ok até alguns milhares de linhas) e snippets.
+   - **Próximo é o MS6, o polimento.**
 4. Seguir a tabela de milestones do ROADMAP.md; cada sessão começar pedindo objetivo + critério de aceite.
 5. Pendente (do humano): atualizar a árvore do `ROADMAP.md` para `internal/`.
 
@@ -122,5 +133,9 @@ O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda
 - **O tema assume terminal escuro** (cores RGB do Tokyo Night, com fundo de destaque `#292e42`). Num terminal claro, o destaque da linha fica feio; um tema claro ou configurável fica para o MS6.
 - **Semântica vim seguida à risca, e testada:** um movimento que falha não mexe na coluna desejada; `cw` age como `ce`; `dw` na última palavra da linha não junta linhas; `i{` em várias linhas vira operação por linhas inteiras; o undo de `ciw` mais o texto digitado é um passo só.
 - **Teste aleatório** (`editor/random_test.go`): 80 mil teclas vim aleatórias, com semente fixa, verificando que não há panic, que o cursor é sempre válido e que nenhuma linha passa da largura da tela.
+- **Assincronia (MS5):** as goroutines do cliente LSP **nunca** tocam no estado do editor. Elas mandam eventos por `editor.Async()`; o TUI tem um `tea.Cmd` que espera nesse canal e chama `editor.HandleAsync(ev)` na thread da interface. As respostas antigas (hover ou completion com um id que já não é o último) são ignoradas.
+- **Encerramento do gopls:** `ed.Close()` no fim do `main` manda `shutdown` e `exit`, e mata o processo depois de 2 s se ele não sair. Conferido no Gerenciador de Tarefas: nenhum gopls órfão sobra dos testes (os processos `gopls` que aparecem rodando são do VS Code).
+- **Testes com gopls real** (`lsp/gopls_integration_test.go` e `editor/gopls_integration_test.go`): são pulados com `go test -short ./...` ou sem gopls no PATH. Levam cerca de 2 s.
+- **O renderer emite SGR `4:3` (undercurl) e `58;2;r;g;b` (cor do sublinhado)**: o terminal do VS Code e o Windows Terminal suportam; terminais antigos caem para sublinhado simples ou ignoram.
 - **Sair é decisão do core**: `editor.ShouldQuit()`. O TUI só obedece; ele não trata mais o Ctrl+c.
 - **Undo mora no buffer** (`history.go`): cada `Insert`/`Delete` é registrado. O editor agrupa as mudanças com `BeginChange`/`EndChange`: um comando do modo normal é um passo, e uma sessão inteira de insert (do `i` ao Esc) também é um passo. O undo devolve o cursor para onde ele estava **antes** do comando. O `Modified()` compara o id do topo da pilha com o id salvo, então desfazer até o estado salvo tira o `[+]`.

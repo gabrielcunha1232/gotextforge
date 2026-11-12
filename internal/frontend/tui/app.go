@@ -11,12 +11,34 @@ type model struct {
 	editor *editor.Editor
 }
 
+type asyncMsg struct {
+	event any
+}
+
+func (m model) waitAsync() tea.Cmd {
+	ch := m.editor.Async()
+	if ch == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		ev, ok := <-ch
+		if !ok {
+			return nil
+		}
+		return asyncMsg{event: ev}
+	}
+}
+
 func (m model) Init() tea.Cmd {
-	return nil
+	return m.waitAsync()
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case asyncMsg:
+		m.editor.HandleAsync(msg.event)
+		return m, m.waitAsync()
+
 	case tea.WindowSizeMsg:
 		m.editor.HandleEvent(input.NewResizeEvent(msg.Width, msg.Height))
 

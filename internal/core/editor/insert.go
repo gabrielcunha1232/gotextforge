@@ -12,6 +12,7 @@ func (e *Editor) enterInsert(at buffer.Pos) {
 }
 
 func (e *Editor) leaveInsert() {
+	e.comp = nil
 	e.buf.EndChange()
 	e.mode = ModeNormal
 	if e.cursor.Col > 0 {
@@ -21,6 +22,9 @@ func (e *Editor) leaveInsert() {
 }
 
 func (e *Editor) handleInsertKey(k input.Key) {
+	if e.handleCompletionKey(k) {
+		return
+	}
 	if e.handleInsertMotion(k) {
 		return
 	}

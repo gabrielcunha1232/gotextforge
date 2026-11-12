@@ -48,13 +48,19 @@ func writeSpan(b *strings.Builder, text string, s render.Style) {
 	if s.Italic {
 		code("3")
 	}
-	if s.Underline || s.Undercurl {
+	switch {
+	case s.Undercurl:
+		code("4:3")
+	case s.Underline:
 		code("4")
 	}
 	if c := colorCode(s.Fg, false); c != "" {
 		code(c)
 	}
 	if c := colorCode(s.Bg, true); c != "" {
+		code(c)
+	}
+	if c := underlineColorCode(s.Sp); c != "" {
 		code(c)
 	}
 
@@ -87,6 +93,17 @@ func colorCode(c render.Color, background bool) string {
 			prefix = "48;2;"
 		}
 		return prefix + strconv.Itoa(int(c.R)) + ";" + strconv.Itoa(int(c.G)) + ";" + strconv.Itoa(int(c.B))
+	default:
+		return ""
+	}
+}
+
+func underlineColorCode(c render.Color) string {
+	switch c.Kind {
+	case render.ColorANSI:
+		return "58;5;" + strconv.Itoa(int(c.Index))
+	case render.ColorRGB:
+		return "58;2;" + strconv.Itoa(int(c.R)) + ";" + strconv.Itoa(int(c.G)) + ";" + strconv.Itoa(int(c.B))
 	default:
 		return ""
 	}

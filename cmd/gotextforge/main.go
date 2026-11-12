@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/gabrielcunha1232/gotextforge/internal/core/buffer"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/editor"
+	"github.com/gabrielcunha1232/gotextforge/internal/core/lsp"
 	"github.com/gabrielcunha1232/gotextforge/internal/frontend/tui"
 )
 
@@ -33,7 +35,12 @@ func main() {
 	}
 
 	ed := editor.New(buf, path)
-	if err := tui.Run(ed); err != nil {
+	if strings.HasSuffix(path, ".go") {
+		ed.SetLanguageClient(lsp.Start(path, lsp.GoplsStarter))
+	}
+	err := tui.Run(ed)
+	ed.Close()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "erro ao executar editor: %v\n", err)
 		os.Exit(1)
 	}

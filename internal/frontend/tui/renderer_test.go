@@ -22,7 +22,9 @@ func TestWriteSpan(t *testing.T) {
 		{name: "fundo brilhante", style: render.Style{Bg: render.ColorBrightRed}, want: "\x1b[101mx\x1b[0m"},
 		{name: "fundo RGB", style: render.Style{Bg: render.RGB(1, 2, 3)}, want: "\x1b[48;2;1;2;3mx\x1b[0m"},
 		{name: "atributos e cor", style: render.Style{Bold: true, Italic: true, Fg: render.ColorGreen}, want: "\x1b[1;3;32mx\x1b[0m"},
-		{name: "undercurl vira underline", style: render.Style{Undercurl: true}, want: "\x1b[4mx\x1b[0m"},
+		{name: "underline", style: render.Style{Underline: true}, want: "\x1b[4mx\x1b[0m"},
+		{name: "undercurl", style: render.Style{Undercurl: true}, want: "\x1b[4:3mx\x1b[0m"},
+		{name: "undercurl vermelho", style: render.Style{Undercurl: true, Sp: render.RGB(247, 118, 142)}, want: "\x1b[4:3;58;2;247;118;142mx\x1b[0m"},
 	}
 
 	for _, tt := range tests {

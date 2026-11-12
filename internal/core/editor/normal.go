@@ -241,6 +241,8 @@ func (e *Editor) runAction(cmd engine.Command) {
 		e.enterCommand()
 	case engine.ActionQuit:
 		e.requestQuit()
+	case engine.ActionHover:
+		e.requestHover()
 	}
 }
 

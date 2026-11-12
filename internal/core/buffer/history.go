@@ -31,6 +31,11 @@ type history struct {
 	replaying bool
 	dirty     bool
 	dirtyFrom int
+	version   int
+}
+
+func (b *Buffer) Version() int {
+	return b.version + 1
 }
 
 func (b *Buffer) TakeDirty() (int, bool) {
@@ -56,6 +61,7 @@ func (b *Buffer) EndChange() {
 }
 
 func (b *Buffer) record(c change) {
+	b.version++
 	if !b.dirty || c.start.Line < b.dirtyFrom {
 		b.dirty = true
 		b.dirtyFrom = c.start.Line

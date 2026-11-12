@@ -23,10 +23,11 @@ func (e *Editor) Frame() render.Frame {
 	textWidth := max(e.width-gw, 0)
 	lines := make([]render.StyledLine, 0, vpHeight)
 
+	diags := e.diagnosticsByLine(start, end-1)
 	for i := start; i < end; i++ {
 		current := i == e.cursor.Line
-		line := e.gutter(i, gw, current)
-		line = append(line, e.renderBufferLine(i, textWidth, current)...)
+		line := e.gutter(i, gw, current, diags[i])
+		line = append(line, e.renderBufferLine(i, textWidth, current, diags[i])...)
 		if current {
 			line = padTo(line, e.width, render.Style{Bg: colBgHighlight})
 		}
@@ -40,9 +41,18 @@ func (e *Editor) Frame() render.Frame {
 		e.overlayIntro(lines)
 	}
 
+	cursor := e.screenCursor(start, gw)
+	switch {
+	case e.hover != nil && e.mode == ModeNormal:
+		e.placeBox(lines, e.hover.render(max(e.width-6, 1)), cursor.Row, cursor.Col)
+	case e.comp != nil && e.mode == ModeInsert:
+		anchor := gw + view.ScreenCol(e.buf.Line(e.cursor.Line), e.comp.start.Col, view.DefaultTabStop)
+		e.placeBox(lines, e.completionBox(), cursor.Row, max(anchor-7, 0))
+	}
+
 	frame := render.Frame{
 		Lines:       lines,
-		Cursor:      e.screenCursor(start, gw),
+		Cursor:      cursor,
 		CursorShape: render.CursorBlock,
 		Status:      e.statusLine(),
 	}
@@ -67,7 +77,7 @@ func (e *Editor) gutterWidth() int {
 	return max(digits, 3) + 2
 }
 
-func (e *Editor) gutter(i, width int, current bool) render.StyledLine {
+func (e *Editor) gutter(i, width int, current bool, diags []lineDiag) render.StyledLine {
 	if width >= e.width {
 		return nil
 	}
@@ -78,32 +88,41 @@ func (e *Editor) gutter(i, width int, current bool) render.StyledLine {
 	if rel < 0 {
 		rel = -rel
 	}
-	return render.StyledLine{{Text: fmt.Sprintf(" %*d ", width-2, rel), Style: styleLineNr}}
+	style := styleLineNr
+	if len(diags) > 0 {
+		style = render.Style{Fg: severityColor(worstSeverity(diags)), Bold: true}
+	}
+	return render.StyledLine{{Text: fmt.Sprintf(" %*d ", width-2, rel), Style: style}}
 }
 
-func (e *Editor) renderBufferLine(i, width int, current bool) render.StyledLine {
+func (e *Editor) renderBufferLine(i, width int, current bool, diags []lineDiag) render.StyledLine {
 	runes := e.buf.Line(i)
 	var bg render.Color
 	if current {
 		bg = colBgHighlight
 	}
 
-	if !e.highlight {
-		plain := render.Style{Bg: bg}
-		return view.RenderLine(runes, func(int) render.Style { return plain }, width, view.DefaultTabStop)
-	}
-
-	tokens, _ := syntax.HighlightLine(runes, e.syntax.StateAt(e.buf, i))
 	styles := make([]render.Style, len(runes))
 	for j := range styles {
 		styles[j].Bg = bg
 	}
-	for _, t := range tokens {
-		for j := t.Start; j < t.End; j++ {
-			styles[j] = withBg(theme[t.Kind], bg)
+	if e.highlight {
+		tokens, _ := syntax.HighlightLine(runes, e.syntax.StateAt(e.buf, i))
+		for _, t := range tokens {
+			for j := t.Start; j < t.End; j++ {
+				styles[j] = withBg(theme[t.Kind], bg)
+			}
 		}
 	}
-	return view.RenderLine(runes, func(j int) render.Style { return styles[j] }, width, view.DefaultTabStop)
+	applyDiagnostics(styles, diags)
+
+	line := view.RenderLine(runes, func(j int) render.Style { return styles[j] }, width, view.DefaultTabStop)
+	if text, sev := virtualText(diags); text != "" {
+		if room := width - line.Width(); room > 4 {
+			line = append(line, render.Span{Text: truncateText(text, room), Style: render.Style{Fg: severityColor(sev), Bg: bg, Italic: true}})
+		}
+	}
+	return line
 }
 
 func padTo(line render.StyledLine, width int, style render.Style) render.StyledLine {
@@ -154,9 +173,7 @@ func (e *Editor) statusLine() render.StyledLine {
 	if pending := e.parser.Pending(); pending != "" {
 		right = append(right, render.Span{Text: " " + sanitize(pending) + " ", Style: styleStatusPending})
 	}
-	if e.highlight {
-		right = append(right, render.Span{Text: " go ", Style: styleStatusC})
-	}
+	right = append(right, e.lspStatusSpans()...)
 	right = append(right,
 		render.Span{Text: " " + e.progress() + " ", Style: styleStatusB},
 		render.Span{Text: fmt.Sprintf(" %d:%d ", e.cursor.Line+1, e.cursor.Col+1), Style: modeStyle},

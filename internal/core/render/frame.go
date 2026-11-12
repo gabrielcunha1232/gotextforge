@@ -41,6 +41,7 @@ type Style struct {
 	Italic    bool
 	Underline bool
 	Undercurl bool
+	Sp        Color
 }
 
 type Span struct {

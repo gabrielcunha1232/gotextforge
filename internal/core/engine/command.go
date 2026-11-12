@@ -81,6 +81,7 @@ const (
 	ActionReplace
 	ActionCommandLine
 	ActionQuit
+	ActionHover
 )
 
 type Command struct {

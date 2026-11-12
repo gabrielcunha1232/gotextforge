@@ -130,3 +130,18 @@ func TestHasInvalidUTF8(t *testing.T) {
 		})
 	}
 }
+
+func TestPlainTextEVersion(t *testing.T) {
+	b := mustLoad(t, "\xef\xbb\xbfa\r\nb\r\n")
+	if got := b.PlainText(); got != "a\nb\n" {
+		t.Errorf("PlainText = %q, esperava sem BOM e com LF", got)
+	}
+	v1 := b.Version()
+	b.Insert(Pos{}, "x")
+	v2 := b.Version()
+	b.Undo()
+	v3 := b.Version()
+	if !(v1 < v2 && v2 < v3) {
+		t.Errorf("Version deveria crescer a cada mudanca, inclusive undo: %d %d %d", v1, v2, v3)
+	}
+}

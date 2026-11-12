@@ -39,6 +39,9 @@ type Editor struct {
 	syntax    syntax.Cache
 	parser    engine.Parser
 	reg       register
+	lsp       lspState
+	hover     *hoverPopup
+	comp      *completion
 	width     int
 	height    int
 }
@@ -92,9 +95,18 @@ func (e *Editor) HandleEvent(ev input.Event) {
 
 	case input.EventKey:
 		e.message = ""
+		if e.hover != nil {
+			e.hover = nil
+			if ev.Key.Code == input.KeyEsc {
+				return
+			}
+		}
 		switch e.mode {
 		case ModeInsert:
 			e.handleInsertKey(ev.Key)
+			if e.mode == ModeInsert {
+				e.afterInsertKey(ev.Key)
+			}
 		case ModeCommand:
 			e.handleCommandKey(ev.Key)
 		default:
@@ -106,6 +118,7 @@ func (e *Editor) HandleEvent(ev input.Event) {
 		}
 	}
 	e.viewport.EnsureVisible(e.cursor.Line, e.buf.LineCount())
+	e.syncLanguageServer()
 }
 
 func (e *Editor) moveVertical(delta int) {

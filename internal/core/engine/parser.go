@@ -149,6 +149,8 @@ func (p *Parser) Feed(k input.Key) (Command, bool) {
 		return p.finish(Command{Action: ActionJoin})
 	case ':':
 		return p.finish(Command{Action: ActionCommandLine})
+	case 'K':
+		return p.finish(Command{Action: ActionHover})
 	case 'r':
 		p.wait = waitChar
 		p.waitAct = ActionReplace

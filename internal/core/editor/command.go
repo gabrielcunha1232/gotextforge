@@ -77,6 +77,9 @@ func (e *Editor) write() bool {
 		return false
 	}
 	e.buf.MarkSaved()
+	if e.lsp.client != nil {
+		e.lsp.client.Save()
+	}
 	e.message = fmt.Sprintf("%q %dL gravado", e.filename, e.buf.LineCount())
 	return true
 }

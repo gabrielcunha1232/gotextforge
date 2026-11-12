@@ -3,6 +3,7 @@ package buffer
 import (
 	"bufio"
 	"io"
+	"strings"
 )
 
 func (b *Buffer) WriteTo(w io.Writer) (int64, error) {
@@ -44,6 +45,25 @@ func (b *Buffer) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	return n, bw.Flush()
+}
+
+func (b *Buffer) PlainText() string {
+	n := len(b.lines)
+	for _, l := range b.lines {
+		n += len(l)
+	}
+	var sb strings.Builder
+	sb.Grow(n)
+	for i, l := range b.lines {
+		if i > 0 {
+			sb.WriteByte('\n')
+		}
+		sb.WriteString(string(l))
+	}
+	if b.finalNewline {
+		sb.WriteByte('\n')
+	}
+	return sb.String()
 }
 
 func (b *Buffer) HasInvalidUTF8() bool {
