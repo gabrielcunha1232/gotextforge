@@ -1,60 +1,93 @@
 package tui
 
 import (
-	"fmt"
-	"image/color"
 	"strconv"
 	"strings"
 
-	"charm.land/lipgloss/v2"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/render"
 )
 
+const sgrReset = "\x1b[0m"
+
 func RenderFrame(frame render.Frame) string {
 	var b strings.Builder
+	b.Grow(len(frame.Lines) * 128)
 
 	for _, line := range frame.Lines {
 		for _, span := range line {
-			b.WriteString(applyStyle(span.Style).Render(span.Text))
+			writeSpan(&b, span.Text, span.Style)
 		}
 		b.WriteByte('\n')
 	}
 
-	statusStyle := lipgloss.NewStyle().Reverse(true)
-	b.WriteString(statusStyle.Render(frame.Status))
+	b.WriteString("\x1b[7m")
+	b.WriteString(frame.Status)
+	b.WriteString(sgrReset)
 
 	return b.String()
 }
 
-func applyStyle(s render.Style) lipgloss.Style {
-	ls := lipgloss.NewStyle()
+func writeSpan(b *strings.Builder, text string, s render.Style) {
+	if s == (render.Style{}) {
+		b.WriteString(text)
+		return
+	}
+	b.WriteString("\x1b[")
+	first := true
+	code := func(c string) {
+		if !first {
+			b.WriteByte(';')
+		}
+		b.WriteString(c)
+		first = false
+	}
 
-	if c, ok := toLipglossColor(s.Fg); ok {
-		ls = ls.Foreground(c)
-	}
-	if c, ok := toLipglossColor(s.Bg); ok {
-		ls = ls.Background(c)
-	}
 	if s.Bold {
-		ls = ls.Bold(true)
+		code("1")
 	}
 	if s.Italic {
-		ls = ls.Italic(true)
+		code("3")
 	}
 	if s.Underline || s.Undercurl {
-		ls = ls.Underline(true)
+		code("4")
+	}
+	if c := colorCode(s.Fg, false); c != "" {
+		code(c)
+	}
+	if c := colorCode(s.Bg, true); c != "" {
+		code(c)
 	}
 
-	return ls
+	b.WriteByte('m')
+	b.WriteString(text)
+	b.WriteString(sgrReset)
 }
 
-func toLipglossColor(c render.Color) (color.Color, bool) {
+func colorCode(c render.Color, background bool) string {
 	switch c.Kind {
 	case render.ColorANSI:
-		return lipgloss.Color(strconv.Itoa(int(c.Index))), true
+		i := int(c.Index)
+		switch {
+		case i < 8 && background:
+			return strconv.Itoa(40 + i)
+		case i < 8:
+			return strconv.Itoa(30 + i)
+		case i < 16 && background:
+			return strconv.Itoa(100 + i - 8)
+		case i < 16:
+			return strconv.Itoa(90 + i - 8)
+		case background:
+			return "48;5;" + strconv.Itoa(i)
+		default:
+			return "38;5;" + strconv.Itoa(i)
+		}
 	case render.ColorRGB:
-		return lipgloss.Color(fmt.Sprintf("#%02x%02x%02x", c.R, c.G, c.B)), true
+		prefix := "38;2;"
+		if background {
+			prefix = "48;2;"
+		}
+		return prefix + strconv.Itoa(int(c.R)) + ";" + strconv.Itoa(int(c.G)) + ";" + strconv.Itoa(int(c.B))
 	default:
-		return nil, false
+		return ""
 	}
 }

@@ -5,11 +5,13 @@ import (
 	"io"
 	"math"
 	"path/filepath"
+	"strings"
 
 	"github.com/gabrielcunha1232/gotextforge/internal/core/buffer"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/input"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/render"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/storage"
+	"github.com/gabrielcunha1232/gotextforge/internal/core/syntax"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/view"
 )
 
@@ -24,19 +26,21 @@ const (
 type SaveFunc func(path string, src io.WriterTo) error
 
 type Editor struct {
-	buf      *buffer.Buffer
-	viewport view.Viewport
-	cursor   buffer.Pos
-	wantCol  int
-	mode     Mode
-	path     string
-	filename string
-	save     SaveFunc
-	cmdline  []rune
-	message  string
-	quit     bool
-	width    int
-	height   int
+	buf       *buffer.Buffer
+	viewport  view.Viewport
+	cursor    buffer.Pos
+	wantCol   int
+	mode      Mode
+	path      string
+	filename  string
+	save      SaveFunc
+	cmdline   []rune
+	message   string
+	quit      bool
+	highlight bool
+	syntax    syntax.Cache
+	width     int
+	height    int
 }
 
 func New(buf *buffer.Buffer, path string) *Editor {
@@ -52,13 +56,14 @@ func New(buf *buffer.Buffer, path string) *Editor {
 	const defaultHeight = 24
 
 	return &Editor{
-		buf:      buf,
-		viewport: view.NewViewport(defaultHeight - 1),
-		path:     path,
-		filename: filename,
-		save:     storage.Save,
-		width:    defaultWidth,
-		height:   defaultHeight,
+		buf:       buf,
+		viewport:  view.NewViewport(defaultHeight - 1),
+		path:      path,
+		filename:  filename,
+		save:      storage.Save,
+		highlight: strings.HasSuffix(path, ".go"),
+		width:     defaultWidth,
+		height:    defaultHeight,
 	}
 }
 
@@ -230,11 +235,12 @@ func (e *Editor) Frame() render.Frame {
 	vpHeight := e.viewport.Height
 	lines := make([]render.StyledLine, 0, vpHeight)
 
+	if dirtyLine, ok := e.buf.TakeDirty(); ok {
+		e.syntax.Invalidate(dirtyLine)
+	}
+
 	for i := start; i < end; i++ {
-		formatted := view.FormatLine(e.buf.Line(i), e.width, view.DefaultTabStop)
-		lines = append(lines, render.StyledLine{
-			{Text: formatted, Style: render.Style{}},
-		})
+		lines = append(lines, e.renderBufferLine(i))
 	}
 
 	tildeStyle := render.Style{Fg: render.ColorBrightBlack}

@@ -1,45 +1,78 @@
 package view
 
+import (
+	"strings"
+
+	"github.com/gabrielcunha1232/gotextforge/internal/core/render"
+)
+
 const DefaultTabStop = 4
 
 func FormatLine(runes []rune, width, tabStop int) string {
+	var sb strings.Builder
+	layout(runes, width, tabStop, func(_ int, r rune) {
+		sb.WriteRune(r)
+	})
+	return sb.String()
+}
+
+func RenderLine(runes []rune, styleAt func(i int) render.Style, width, tabStop int) render.StyledLine {
+	var line render.StyledLine
+	var sb strings.Builder
+	var current render.Style
+	open := false
+
+	layout(runes, width, tabStop, func(src int, r rune) {
+		style := styleAt(src)
+		if open && style != current {
+			line = append(line, render.Span{Text: sb.String(), Style: current})
+			sb.Reset()
+		}
+		current = style
+		open = true
+		sb.WriteRune(r)
+	})
+
+	if open {
+		line = append(line, render.Span{Text: sb.String(), Style: current})
+	}
+	return line
+}
+
+func layout(runes []rune, width, tabStop int, emit func(src int, r rune)) {
 	if width <= 0 {
-		return ""
+		return
 	}
 	if tabStop <= 0 {
 		tabStop = DefaultTabStop
 	}
 
-	out := make([]rune, 0, width)
 	col := 0
-
-	for _, r := range runes {
+	for i, r := range runes {
 		if col >= width {
-			break
+			return
 		}
 
 		w := cellWidth(r, col, tabStop)
 		switch {
 		case r == '\t':
 			for s := 0; s < w && col < width; s++ {
-				out = append(out, ' ')
+				emit(i, ' ')
 				col++
 			}
 		case isControlRune(r):
 			for _, cr := range controlNotation(r) {
 				if col >= width {
-					break
+					return
 				}
-				out = append(out, cr)
+				emit(i, cr)
 				col++
 			}
 		default:
-			out = append(out, r)
+			emit(i, r)
 			col++
 		}
 	}
-
-	return string(out)
 }
 
 func ScreenCol(runes []rune, runeCol, tabStop int) int {

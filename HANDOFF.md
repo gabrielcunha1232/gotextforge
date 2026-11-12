@@ -4,14 +4,16 @@
 
 ## Estado atual (atualizado em 2026-11-12)
 
-**MS0, MS1 e MS2 concluídos.** O editor abre um arquivo pela linha de comando e mostra o conteúdo no terminal (Bubble Tea v2). Recursos atuais:
+**MS0, MS1, MS2 e MS3 concluídos.** O editor abre um arquivo pela linha de comando e mostra o conteúdo no terminal (Bubble Tea v2). Recursos atuais:
 - **Movimento:** cursor (`hjkl`, setas, `g`/`G`, `0`/`$`, PgUp/PgDn), com a tela seguindo o cursor.
 - **Edição:** modo insert (`i a I A o O`), modo normal (`x`) e undo/redo (`u`, Ctrl+r).
 - **Arquivo:** salvar e sair (`:w :q :q! :wq :x`).
 
 O critério do MS2 foi verificado de ponta a ponta: o editor modifica o `main.go` de um módulo real, salva com `:wq`, e o `go build` e o binário rodam.
 
-**Próximo:** MS3, highlight via `go/scanner`. O gargalo do `RenderFrame` com muitos spans já está medido (veja Medições).
+Arquivos `.go` têm syntax highlight (MS3): palavras-chave, strings, números, comentários, identificadores predeclarados e nomes de função, com comentários de bloco e raw strings que atravessam linhas tratados corretamente.
+
+**Próximo:** MS4, a engine vim (motions, operadores `d/c/y`, text objects simples e counts), com estado *pending*.
 
 ### Estrutura real (difere do ROADMAP, que ainda mostra `core/` na raiz)
 
@@ -20,9 +22,11 @@ cmd/gotextforge/main.go     lê os.Args[1] → buffer.Load → editor.New → tu
 internal/core/input/        Event{Kind, Key, Width, Height}, Key{Code, Rune, Mod} (comparável, vira chave de map)
 internal/core/render/       Frame{Lines, Cursor ScreenPos, Status}, StyledLine = []Span, Style, Color{Kind ANSI|RGB}
 internal/core/buffer/       [][]rune somente leitura; Load(io.Reader); LineEnding (LF/CRLF); HasBOM; ErrUTF16
-internal/core/view/         Viewport{Top, Height} com clamp; FormatLine (tabs, corte na largura, controles → ^X / <xx>)
+internal/core/view/         Viewport (clamp, EnsureVisible); layout único → FormatLine (texto) e RenderLine (spans com estilo); ScreenCol
+internal/core/syntax/       HighlightLine(linha, estado) via go/scanner; Cache de estado por linha + NextState (atalho exato)
+internal/core/storage/      Save atômico (tmp + Sync + Rename)
 internal/core/editor/       junta buffer + viewport; HandleEvent(Event); Frame() render.Frame
-internal/frontend/tui/      TranslateKey (tea → input.Key), RenderFrame (Frame → string via Lip Gloss), model
+internal/frontend/tui/      TranslateKey (tea → input.Key), RenderFrame (Frame → string com SGR ANSI direto), model
 ```
 
 O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda revisão.
@@ -42,7 +46,10 @@ O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda
 ### Medições (benchmarks em `*_bench_test.go`, `go test -run '^$' -bench=. -benchmem ./...`)
 
 - `Frame()` leva cerca de 50 µs com 1 mil, 10 mil ou 100 mil linhas: a virtualização (D8) está comprovada.
-- `RenderFrame` com 50 linhas: cerca de 0,06 ms com 1 span por linha, 1,2 ms com 10 e 3,8 ms com 30. **Esse é o gargalo esperado no MS3 (highlight)**: guardar o `lipgloss.Style` pronto por `render.Style`, já que o `Style` é comparável e pode ser chave de map. Só otimizar quando o número mandar.
+- `RenderFrame` com 50 linhas: com Lip Gloss eram 1,2 ms (10 spans por linha) e 3,8 ms (30 spans). **No MS3 o Lip Gloss foi trocado por SGR ANSI escrito à mão**: agora são 0,03 ms e 0,12 ms. Isso é seguro porque o texto dos spans já vem sanitizado pelo `RenderLine`, e o renderer do Bubble Tea v2 continua adaptando as cores ao perfil do terminal. O Lip Gloss saiu do `go.mod`.
+- Quadro completo com highlight (Frame + RenderFrame, 200x50): ~0,6 ms. `Frame()` colorido: ~0,3 ms em qualquer tamanho de arquivo.
+- Primeiro `G` num arquivo de 100 mil linhas (o cache calcula os estados de todas as linhas): 273 ms com o `go/scanner` em cada linha; **16 ms** com o `NextState`, que só tokeniza linhas com `/*`, `*/` ou `` ` ``.
+- Validação do highlight: o cache de estados foi comparado com o `go/scanner` rodando no arquivo inteiro, em toda a stdlib do Go (8.087 arquivos, ~3 milhões de linhas), com 0 divergências.
 - `buffer.Load` de 100 mil linhas leva cerca de 39 ms (acontece uma vez, ao abrir).
 
 ## Objetivo e restrições do projeto
@@ -71,7 +78,7 @@ O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda
 
 ## Ferramentas e referências validadas (2026)
 
-- **Bubble Tea v2** — lançado em 2026 (charm.land/blog/v2), ativo. Stack: Bubble Tea + Lip Gloss + Bubbles (v2).
+- **Bubble Tea v2** — lançado em 2026 (charm.land/blog/v2), ativo. Stack hoje: só Bubble Tea v2 (o Lip Gloss foi removido no MS3; veja Medições).
 - **Wails v3.0.0** — estável desde 26/10/2026; recupera crash do WebView2. Issue conhecido: lag com HTML/CSS pesado (wails#4155) — por isso a área de texto é `<canvas>`, não DOM.
 - **Fyne** — descartado (TextGrid com lag/vazamento e não editável: fyne#2874, fyne#3994).
 - **Gio** — plano B do plano B; gvcode (github.com/oligo/gvcode) é componente de editor pra Gio, referência se o canvas falhar.
@@ -82,7 +89,8 @@ O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda
 1. ~~Milestone 0~~ ✅ e ~~Milestone 1~~ ✅.
 2. ~~Milestone 2~~ ✅.
    - Pendências pequenas, boas para o humano fazer: autoindent no Enter e no `o`; `:w outro.go`; abrir um arquivo inexistente como novo.
-3. **Milestone 3**: highlight via `go/scanner`. O `Frame` passa a ter vários spans por linha, e aí é provável que entre o cache de `lipgloss.Style` por `render.Style` no TUI.
+3. ~~Milestone 3~~ ✅.
+   - **Próximo é o MS4, a engine vim**: motions, operadores `d/c/y`, text objects (`iw`, `ap`), counts e o estado *pending* (`d` espera a motion). Ela substitui o andaime de teclas que hoje fica em `editor.handleNormalKey`/`handleMotion`.
 4. Seguir a tabela de milestones do ROADMAP.md; cada sessão começar pedindo objetivo + critério de aceite.
 5. Pendente (do humano): atualizar a árvore do `ROADMAP.md` para `internal/`.
 

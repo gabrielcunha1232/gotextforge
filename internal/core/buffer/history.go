@@ -29,6 +29,16 @@ type history struct {
 	nextID    int
 	savedID   int
 	replaying bool
+	dirty     bool
+	dirtyFrom int
+}
+
+func (b *Buffer) TakeDirty() (int, bool) {
+	if !b.dirty {
+		return 0, false
+	}
+	b.dirty = false
+	return b.dirtyFrom, true
 }
 
 func (b *Buffer) BeginChange(cursor Pos) {
@@ -46,6 +56,10 @@ func (b *Buffer) EndChange() {
 }
 
 func (b *Buffer) record(c change) {
+	if !b.dirty || c.start.Line < b.dirtyFrom {
+		b.dirty = true
+		b.dirtyFrom = c.start.Line
+	}
 	if b.replaying {
 		return
 	}

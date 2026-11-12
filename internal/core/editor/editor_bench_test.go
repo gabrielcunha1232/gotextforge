@@ -59,3 +59,20 @@ func BenchmarkScrollAndFrame(b *testing.B) {
 		_ = ed.Frame()
 	}
 }
+
+func BenchmarkPrimeiroPuloParaOFim(b *testing.B) {
+	src := syntheticGoSource(100_000)
+	b.ReportAllocs()
+	for b.Loop() {
+		b.StopTimer()
+		buf, err := buffer.Load(strings.NewReader(src))
+		if err != nil {
+			b.Fatal(err)
+		}
+		ed := New(buf, "bench.go")
+		ed.HandleEvent(input.NewResizeEvent(200, 51))
+		b.StartTimer()
+		ed.HandleEvent(input.NewKeyEvent(input.Key{Rune: 'G'}))
+		_ = ed.Frame()
+	}
+}
