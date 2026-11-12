@@ -91,4 +91,7 @@ O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda
 - **`String()` com receiver de ponteiro não é chamado pelo `fmt` com valores**: use receiver de valor em tipos pequenos.
 - **`bufio.Scanner` já descarta o newline final e o `\r`**: não aparar à mão (isso já engoliu linhas em branco no fim do arquivo).
 - **Conteúdo do arquivo nunca vai cru para o terminal**: `FormatLine` neutraliza os caracteres de controle (ESC, `\r`, C1).
-- **Risco no MS2**: um arquivo com bytes UTF-8 inválidos (sem BOM) abre com `�`, e ao salvar o original se perde. Decidir no MS2 (provavelmente abrir como somente leitura).
+- **UTF-8 inválido (resolvido no MS2)**: o arquivo abre (mostrando `�`), mas o `:w` é bloqueado (`buffer.HasInvalidUTF8`), para não destruir os bytes originais.
+- **Salvar = `storage.Save`, atômico**: grava num `.nome.*.tmp` na mesma pasta, faz `Sync` e depois `Rename` por cima do original. Segue symlinks e preserva permissões. Num erro, o original fica intacto.
+- **Fidelidade ao salvar**: `buffer.WriteTo` devolve o mesmo LF/CRLF, o mesmo BOM e o mesmo newline final (ou a falta dele) que o arquivo tinha. A ida e volta Load→WriteTo é testada byte a byte. Exceção conhecida: um arquivo com finais de linha **misturados** é normalizado para CRLF se tiver qualquer `\r\n`.
+- **Sair é decisão do core**: `editor.ShouldQuit()`. O TUI só obedece; ele não trata mais o Ctrl+c.

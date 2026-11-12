@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"unicode/utf8"
 )
 
 var ErrUTF16 = errors.New("arquivo em UTF-16 não é suportado")
@@ -23,16 +24,19 @@ const (
 )
 
 type Buffer struct {
-	lines      [][]rune
-	lineEnding LineEnding
-	hasBOM     bool
-	modified   bool
+	lines        [][]rune
+	lineEnding   LineEnding
+	hasBOM       bool
+	finalNewline bool
+	invalidUTF8  bool
+	modified     bool
 }
 
 func New() *Buffer {
 	return &Buffer{
-		lines:      [][]rune{{}},
-		lineEnding: LineEndingLF,
+		lines:        [][]rune{{}},
+		lineEnding:   LineEndingLF,
+		finalNewline: true,
 	}
 }
 
@@ -59,6 +63,9 @@ func Load(r io.Reader) (*Buffer, error) {
 		b.lines = [][]rune{{}}
 		return b, nil
 	}
+
+	b.invalidUTF8 = !utf8.Valid(data)
+	b.finalNewline = data[len(data)-1] == '\n'
 
 	if bytes.Contains(data, []byte("\r\n")) {
 		b.lineEnding = LineEndingCRLF

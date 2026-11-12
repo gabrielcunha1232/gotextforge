@@ -2,12 +2,14 @@ package editor
 
 import (
 	"fmt"
+	"io"
 	"math"
 	"path/filepath"
 
 	"github.com/gabrielcunha1232/gotextforge/internal/core/buffer"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/input"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/render"
+	"github.com/gabrielcunha1232/gotextforge/internal/core/storage"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/view"
 )
 
@@ -16,7 +18,10 @@ type Mode uint8
 const (
 	ModeNormal Mode = iota
 	ModeInsert
+	ModeCommand
 )
+
+type SaveFunc func(path string, src io.WriterTo) error
 
 type Editor struct {
 	buf      *buffer.Buffer
@@ -24,19 +29,23 @@ type Editor struct {
 	cursor   buffer.Pos
 	wantCol  int
 	mode     Mode
+	path     string
 	filename string
+	save     SaveFunc
+	cmdline  []rune
+	message  string
+	quit     bool
 	width    int
 	height   int
 }
 
-func New(buf *buffer.Buffer, filename string) *Editor {
+func New(buf *buffer.Buffer, path string) *Editor {
 	if buf == nil {
 		buf = buffer.New()
 	}
-	if filename == "" {
-		filename = "[Sem Nome]"
-	} else {
-		filename = filepath.Base(filename)
+	filename := "[Sem Nome]"
+	if path != "" {
+		filename = filepath.Base(path)
 	}
 
 	const defaultWidth = 80
@@ -45,10 +54,16 @@ func New(buf *buffer.Buffer, filename string) *Editor {
 	return &Editor{
 		buf:      buf,
 		viewport: view.NewViewport(defaultHeight - 1),
+		path:     path,
 		filename: filename,
+		save:     storage.Save,
 		width:    defaultWidth,
 		height:   defaultHeight,
 	}
+}
+
+func (e *Editor) ShouldQuit() bool {
+	return e.quit
 }
 
 func (e *Editor) Cursor() buffer.Pos {
@@ -71,9 +86,12 @@ func (e *Editor) HandleEvent(ev input.Event) {
 		e.viewport.Resize(vpHeight, e.buf.LineCount())
 
 	case input.EventKey:
+		e.message = ""
 		switch e.mode {
 		case ModeInsert:
 			e.handleInsertKey(ev.Key)
+		case ModeCommand:
+			e.handleCommandKey(ev.Key)
 		default:
 			e.handleNormalKey(ev.Key)
 		}
@@ -87,6 +105,10 @@ func (e *Editor) handleNormalKey(k input.Key) {
 	}
 
 	switch {
+	case isPlain(k, ':'):
+		e.enterCommand()
+	case isCtrl(k, 'c'):
+		e.requestQuit()
 	case isPlain(k, 'i'):
 		e.enterInsert(e.cursor)
 	case isPlain(k, 'a'):
@@ -203,20 +225,33 @@ func (e *Editor) Frame() render.Frame {
 		})
 	}
 
-	shape := render.CursorBlock
-	if e.mode == ModeInsert {
-		shape = render.CursorBar
-	}
-
-	return render.Frame{
+	frame := render.Frame{
 		Lines:       lines,
 		Cursor:      e.screenCursor(start),
-		CursorShape: shape,
+		CursorShape: render.CursorBlock,
 		Status:      view.FormatLine([]rune(e.status()), e.width, view.DefaultTabStop),
 	}
+
+	switch e.mode {
+	case ModeInsert:
+		frame.CursorShape = render.CursorBar
+	case ModeCommand:
+		cmd := append([]rune{':'}, e.cmdline...)
+		frame.Status = view.FormatLine(cmd, e.width, view.DefaultTabStop)
+		frame.CursorShape = render.CursorBar
+		frame.Cursor = render.ScreenPos{
+			Row: vpHeight,
+			Col: min(view.ScreenCol(cmd, len(cmd), view.DefaultTabStop), max(e.width-1, 0)),
+		}
+	}
+
+	return frame
 }
 
 func (e *Editor) status() string {
+	if e.message != "" {
+		return e.message
+	}
 	mode := ""
 	if e.mode == ModeInsert {
 		mode = " -- INSERT --"

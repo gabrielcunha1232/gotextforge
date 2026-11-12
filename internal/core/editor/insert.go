@@ -25,7 +25,7 @@ func (e *Editor) handleInsertKey(k input.Key) {
 	}
 
 	switch {
-	case k.Code == input.KeyEsc:
+	case k.Code == input.KeyEsc || isCtrl(k, 'c'):
 		e.leaveInsert()
 	case k.Code == input.KeyEnter && k.Mod == 0:
 		e.insertText("\n")

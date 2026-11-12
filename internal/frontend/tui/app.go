@@ -22,11 +22,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		key := TranslateKey(msg)
-		if key == (input.Key{Code: input.KeyRune, Rune: 'c', Mod: input.ModCtrl}) {
-			return m, tea.Quit
-		}
 		if key != (input.Key{}) {
 			m.editor.HandleEvent(input.NewKeyEvent(key))
+		}
+		if m.editor.ShouldQuit() {
+			return m, tea.Quit
 		}
 	}
 
