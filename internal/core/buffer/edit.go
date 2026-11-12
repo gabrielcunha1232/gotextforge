@@ -38,8 +38,9 @@ func (b *Buffer) Insert(p Pos, text string) Pos {
 		newLine = append(newLine, ins...)
 		newLine = append(newLine, line[p.Col:]...)
 		b.lines[p.Line] = newLine
-		b.modified = true
-		return Pos{Line: p.Line, Col: p.Col + len(ins)}
+		end := Pos{Line: p.Line, Col: p.Col + len(ins)}
+		b.record(change{kind: changeInsert, start: p, end: end, text: text})
+		return end
 	}
 
 	newLines := make([][]rune, len(parts))
@@ -56,8 +57,9 @@ func (b *Buffer) Insert(p Pos, text string) Pos {
 	newLines[len(parts)-1] = append(append(make([]rune, 0, len(lastIns)+len(tail)), lastIns...), tail...)
 
 	b.lines = slices.Replace(b.lines, p.Line, p.Line+1, newLines...)
-	b.modified = true
-	return Pos{Line: p.Line + len(parts) - 1, Col: len(lastIns)}
+	end := Pos{Line: p.Line + len(parts) - 1, Col: len(lastIns)}
+	b.record(change{kind: changeInsert, start: p, end: end, text: text})
+	return end
 }
 
 func (b *Buffer) Delete(start, end Pos) string {
@@ -78,7 +80,7 @@ func (b *Buffer) Delete(start, end Pos) string {
 	joined = append(joined, tail...)
 
 	b.lines = slices.Replace(b.lines, start.Line, end.Line+1, joined)
-	b.modified = true
+	b.record(change{kind: changeDelete, start: start, end: end, text: removed})
 	return removed
 }
 
@@ -101,12 +103,4 @@ func (b *Buffer) Text(start, end Pos) string {
 	sb.WriteByte('\n')
 	sb.WriteString(string(b.lines[end.Line][:end.Col]))
 	return sb.String()
-}
-
-func (b *Buffer) Modified() bool {
-	return b.modified
-}
-
-func (b *Buffer) MarkSaved() {
-	b.modified = false
 }

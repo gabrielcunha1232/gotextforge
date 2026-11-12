@@ -93,7 +93,11 @@ func (e *Editor) HandleEvent(ev input.Event) {
 		case ModeCommand:
 			e.handleCommandKey(ev.Key)
 		default:
+			e.buf.BeginChange(e.cursor)
 			e.handleNormalKey(ev.Key)
+			if e.mode != ModeInsert {
+				e.buf.EndChange()
+			}
 		}
 	}
 	e.viewport.EnsureVisible(e.cursor.Line, e.buf.LineCount())
@@ -109,6 +113,12 @@ func (e *Editor) handleNormalKey(k input.Key) {
 		e.enterCommand()
 	case isCtrl(k, 'c'):
 		e.requestQuit()
+	case isPlain(k, 'u'):
+		pos, ok := e.buf.Undo()
+		e.afterHistory(pos, ok, "Já na alteração mais antiga")
+	case isCtrl(k, 'r'):
+		pos, ok := e.buf.Redo()
+		e.afterHistory(pos, ok, "Já na alteração mais recente")
 	case isPlain(k, 'i'):
 		e.enterInsert(e.cursor)
 	case isPlain(k, 'a'):
@@ -158,6 +168,15 @@ func (e *Editor) handleMotion(k input.Key) bool {
 		return false
 	}
 	return true
+}
+
+func (e *Editor) afterHistory(pos buffer.Pos, ok bool, emptyMsg string) {
+	if !ok {
+		e.message = emptyMsg
+		return
+	}
+	e.cursor.Line = pos.Line
+	e.setCol(min(pos.Col, e.maxCol(pos.Line)))
 }
 
 func isPlain(k input.Key, r rune) bool {

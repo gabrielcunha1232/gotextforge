@@ -29,7 +29,7 @@ type Buffer struct {
 	hasBOM       bool
 	finalNewline bool
 	invalidUTF8  bool
-	modified     bool
+	history
 }
 
 func New() *Buffer {

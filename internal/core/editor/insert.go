@@ -12,6 +12,7 @@ func (e *Editor) enterInsert(at buffer.Pos) {
 }
 
 func (e *Editor) leaveInsert() {
+	e.buf.EndChange()
 	e.mode = ModeNormal
 	if e.cursor.Col > 0 {
 		e.cursor.Col--

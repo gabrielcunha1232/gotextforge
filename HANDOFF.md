@@ -4,9 +4,14 @@
 
 ## Estado atual (atualizado em 2026-11-12)
 
-**MS0 e MS1 concluídos.** O editor abre um arquivo pela linha de comando e mostra o conteúdo no terminal (Bubble Tea v2). O scroll funciona com `j`/`k`/↑/↓/PgUp/PgDn/`g`/`G`/Home/End, e Ctrl+c sai. Testado à mão com `runtime/proc.go` (8 mil linhas) e `ssa/rewriteAMD64.go` (110 mil linhas) da stdlib.
+**MS0, MS1 e MS2 concluídos.** O editor abre um arquivo pela linha de comando e mostra o conteúdo no terminal (Bubble Tea v2). Recursos atuais:
+- **Movimento:** cursor (`hjkl`, setas, `g`/`G`, `0`/`$`, PgUp/PgDn), com a tela seguindo o cursor.
+- **Edição:** modo insert (`i a I A o O`), modo normal (`x`) e undo/redo (`u`, Ctrl+r).
+- **Arquivo:** salvar e sair (`:w :q :q! :wq :x`).
 
-**Próximo:** MS2, edição com modos (`i`, Esc, digitar, salvar, undo).
+O critério do MS2 foi verificado de ponta a ponta: o editor modifica o `main.go` de um módulo real, salva com `:wq`, e o `go build` e o binário rodam.
+
+**Próximo:** MS3, highlight via `go/scanner`. O gargalo do `RenderFrame` com muitos spans já está medido (veja Medições).
 
 ### Estrutura real (difere do ROADMAP, que ainda mostra `core/` na raiz)
 
@@ -75,9 +80,11 @@ O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda
 ## Próximos passos (ordem)
 
 1. ~~Milestone 0~~ ✅ e ~~Milestone 1~~ ✅.
-2. **Milestone 2**: cursor com posição no arquivo (linha + rune, D3) convertida para `ScreenPos`; modos normal e insert; digitar; salvar respeitando LineEnding e BOM; undo.
-3. Seguir a tabela de milestones do ROADMAP.md; cada sessão começar pedindo objetivo + critério de aceite.
-4. Pendente (do humano): atualizar a árvore do `ROADMAP.md` para `internal/`.
+2. ~~Milestone 2~~ ✅.
+   - Pendências pequenas, boas para o humano fazer: autoindent no Enter e no `o`; `:w outro.go`; abrir um arquivo inexistente como novo.
+3. **Milestone 3**: highlight via `go/scanner`. O `Frame` passa a ter vários spans por linha, e aí é provável que entre o cache de `lipgloss.Style` por `render.Style` no TUI.
+4. Seguir a tabela de milestones do ROADMAP.md; cada sessão começar pedindo objetivo + critério de aceite.
+5. Pendente (do humano): atualizar a árvore do `ROADMAP.md` para `internal/`.
 
 ## Armadilhas já conhecidas (não redescobrir)
 
@@ -95,3 +102,4 @@ O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda
 - **Salvar = `storage.Save`, atômico**: grava num `.nome.*.tmp` na mesma pasta, faz `Sync` e depois `Rename` por cima do original. Segue symlinks e preserva permissões. Num erro, o original fica intacto.
 - **Fidelidade ao salvar**: `buffer.WriteTo` devolve o mesmo LF/CRLF, o mesmo BOM e o mesmo newline final (ou a falta dele) que o arquivo tinha. A ida e volta Load→WriteTo é testada byte a byte. Exceção conhecida: um arquivo com finais de linha **misturados** é normalizado para CRLF se tiver qualquer `\r\n`.
 - **Sair é decisão do core**: `editor.ShouldQuit()`. O TUI só obedece; ele não trata mais o Ctrl+c.
+- **Undo mora no buffer** (`history.go`): cada `Insert`/`Delete` é registrado. O editor agrupa as mudanças com `BeginChange`/`EndChange`: um comando do modo normal é um passo, e uma sessão inteira de insert (do `i` ao Esc) também é um passo. O undo devolve o cursor para onde ele estava **antes** do comando. O `Modified()` compara o id do topo da pilha com o id salvo, então desfazer até o estado salvo tira o `[+]`.
