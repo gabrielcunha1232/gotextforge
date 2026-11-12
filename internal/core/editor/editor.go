@@ -11,11 +11,19 @@ import (
 	"github.com/gabrielcunha1232/gotextforge/internal/core/view"
 )
 
+type Mode uint8
+
+const (
+	ModeNormal Mode = iota
+	ModeInsert
+)
+
 type Editor struct {
 	buf      *buffer.Buffer
 	viewport view.Viewport
 	cursor   buffer.Pos
 	wantCol  int
+	mode     Mode
 	filename string
 	width    int
 	height   int
@@ -47,6 +55,10 @@ func (e *Editor) Cursor() buffer.Pos {
 	return e.cursor
 }
 
+func (e *Editor) Mode() Mode {
+	return e.mode
+}
+
 func (e *Editor) HandleEvent(ev input.Event) {
 	switch ev.Kind {
 	case input.EventResize:
@@ -57,43 +69,77 @@ func (e *Editor) HandleEvent(ev input.Event) {
 			vpHeight = 1
 		}
 		e.viewport.Resize(vpHeight, e.buf.LineCount())
-		e.viewport.EnsureVisible(e.cursor.Line, e.buf.LineCount())
 
 	case input.EventKey:
-		e.handleKey(ev.Key)
-		e.viewport.EnsureVisible(e.cursor.Line, e.buf.LineCount())
+		switch e.mode {
+		case ModeInsert:
+			e.handleInsertKey(ev.Key)
+		default:
+			e.handleNormalKey(ev.Key)
+		}
 	}
+	e.viewport.EnsureVisible(e.cursor.Line, e.buf.LineCount())
 }
 
-func (e *Editor) handleKey(k input.Key) {
-	plain := func(r rune) bool {
-		return k.Code == input.KeyRune && k.Rune == r && k.Mod == 0
+func (e *Editor) handleNormalKey(k input.Key) {
+	if e.handleMotion(k) {
+		return
 	}
 
 	switch {
-	case k.Code == input.KeyDown || plain('j'):
+	case isPlain(k, 'i'):
+		e.enterInsert(e.cursor)
+	case isPlain(k, 'a'):
+		e.enterInsert(buffer.Pos{Line: e.cursor.Line, Col: min(e.cursor.Col+1, e.buf.LineLen(e.cursor.Line))})
+	case isPlain(k, 'I'):
+		e.enterInsert(buffer.Pos{Line: e.cursor.Line, Col: 0})
+	case isPlain(k, 'A'):
+		e.enterInsert(buffer.Pos{Line: e.cursor.Line, Col: e.buf.LineLen(e.cursor.Line)})
+	case isPlain(k, 'o'):
+		end := e.buf.Insert(buffer.Pos{Line: e.cursor.Line, Col: e.buf.LineLen(e.cursor.Line)}, "\n")
+		e.enterInsert(end)
+	case isPlain(k, 'O'):
+		e.buf.Insert(buffer.Pos{Line: e.cursor.Line, Col: 0}, "\n")
+		e.enterInsert(buffer.Pos{Line: e.cursor.Line, Col: 0})
+	case isPlain(k, 'x') || (k.Code == input.KeyDelete && k.Mod == 0):
+		if e.buf.LineLen(e.cursor.Line) > 0 {
+			e.buf.Delete(e.cursor, buffer.Pos{Line: e.cursor.Line, Col: e.cursor.Col + 1})
+			e.setCol(min(e.cursor.Col, e.maxCol(e.cursor.Line)))
+		}
+	}
+}
+
+func (e *Editor) handleMotion(k input.Key) bool {
+	switch {
+	case k.Code == input.KeyDown || (e.mode == ModeNormal && isPlain(k, 'j')):
 		e.moveVertical(1)
-	case k.Code == input.KeyUp || plain('k'):
+	case k.Code == input.KeyUp || (e.mode == ModeNormal && isPlain(k, 'k')):
 		e.moveVertical(-1)
-	case k.Code == input.KeyLeft || plain('h'):
+	case k.Code == input.KeyLeft || (e.mode == ModeNormal && isPlain(k, 'h')):
 		e.moveHorizontal(-1)
-	case k.Code == input.KeyRight || plain('l'):
+	case k.Code == input.KeyRight || (e.mode == ModeNormal && isPlain(k, 'l')):
 		e.moveHorizontal(1)
 	case k.Code == input.KeyPageDown:
 		e.moveVertical(e.viewport.Height)
 	case k.Code == input.KeyPageUp:
 		e.moveVertical(-e.viewport.Height)
-	case plain('g'):
+	case e.mode == ModeNormal && isPlain(k, 'g'):
 		e.moveToLine(0)
-	case plain('G'):
+	case e.mode == ModeNormal && isPlain(k, 'G'):
 		e.moveToLine(e.buf.LineCount() - 1)
-	case k.Code == input.KeyHome || plain('0'):
-		e.cursor.Col = 0
-		e.wantCol = 0
-	case k.Code == input.KeyEnd || plain('$'):
+	case k.Code == input.KeyHome || (e.mode == ModeNormal && isPlain(k, '0')):
+		e.setCol(0)
+	case k.Code == input.KeyEnd || (e.mode == ModeNormal && isPlain(k, '$')):
 		e.cursor.Col = e.maxCol(e.cursor.Line)
 		e.wantCol = math.MaxInt
+	default:
+		return false
 	}
+	return true
+}
+
+func isPlain(k input.Key, r rune) bool {
+	return k.Code == input.KeyRune && k.Rune == r && k.Mod == 0
 }
 
 func (e *Editor) moveVertical(delta int) {
@@ -117,15 +163,19 @@ func (e *Editor) moveHorizontal(delta int) {
 	if col < 0 {
 		col = 0
 	}
-	if maxCol := e.maxCol(e.cursor.Line); col > maxCol {
-		col = maxCol
-	}
+	e.setCol(min(col, e.maxCol(e.cursor.Line)))
+}
+
+func (e *Editor) setCol(col int) {
 	e.cursor.Col = col
 	e.wantCol = col
 }
 
 func (e *Editor) maxCol(line int) int {
 	n := e.buf.LineLen(line)
+	if e.mode == ModeInsert {
+		return n
+	}
 	if n == 0 {
 		return 0
 	}
@@ -153,13 +203,30 @@ func (e *Editor) Frame() render.Frame {
 		})
 	}
 
-	status := fmt.Sprintf(" %s   Ln %d/%d, Col %d", e.filename, e.cursor.Line+1, total, e.cursor.Col+1)
+	shape := render.CursorBlock
+	if e.mode == ModeInsert {
+		shape = render.CursorBar
+	}
 
 	return render.Frame{
-		Lines:  lines,
-		Cursor: e.screenCursor(start),
-		Status: view.FormatLine([]rune(status), e.width, view.DefaultTabStop),
+		Lines:       lines,
+		Cursor:      e.screenCursor(start),
+		CursorShape: shape,
+		Status:      view.FormatLine([]rune(e.status()), e.width, view.DefaultTabStop),
 	}
+}
+
+func (e *Editor) status() string {
+	mode := ""
+	if e.mode == ModeInsert {
+		mode = " -- INSERT --"
+	}
+	modified := ""
+	if e.buf.Modified() {
+		modified = " [+]"
+	}
+	return fmt.Sprintf("%s %s%s   Ln %d/%d, Col %d",
+		mode, e.filename, modified, e.cursor.Line+1, e.buf.LineCount(), e.cursor.Col+1)
 }
 
 func (e *Editor) screenCursor(top int) render.ScreenPos {

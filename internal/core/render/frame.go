@@ -55,10 +55,18 @@ type ScreenPos struct {
 	Col int // em celulas de tela, nao runes: '世' ocupa 2 celulas (wcwidth)
 }
 
+type CursorShape uint8
+
+const (
+	CursorBlock CursorShape = iota
+	CursorBar
+)
+
 type Frame struct {
-	Lines  []StyledLine
-	Cursor ScreenPos
-	Status string
+	Lines       []StyledLine
+	Cursor      ScreenPos
+	CursorShape CursorShape
+	Status      string
 }
 
 // ANSI cria uma cor da paleta de 256 cores: 0–15 básicas, 16–255 estendidas.

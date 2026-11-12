@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/editor"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/input"
+	"github.com/gabrielcunha1232/gotextforge/internal/core/render"
 )
 
 type model struct {
@@ -37,6 +38,9 @@ func (m model) View() tea.View {
 	v := tea.NewView(RenderFrame(frame))
 	v.AltScreen = true
 	v.Cursor = tea.NewCursor(frame.Cursor.Col, frame.Cursor.Row)
+	if frame.CursorShape == render.CursorBar {
+		v.Cursor.Shape = tea.CursorBar
+	}
 	return v
 }
 
