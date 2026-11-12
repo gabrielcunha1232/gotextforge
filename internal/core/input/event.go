@@ -94,7 +94,7 @@ func (k Key) String() string {
 		prefix += "M-"
 	}
 
-	if k.Mod & ModShift != 0 && k.Code != KeyRune {
+	if k.Mod&ModShift != 0 && k.Code != KeyRune {
 		prefix += "S-"
 	}
 

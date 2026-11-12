@@ -1,0 +1,79 @@
+package buffer
+
+import (
+	"bufio"
+	"bytes"
+	"io"
+)
+
+type LineEnding uint8
+
+const (
+	LineEndingLF LineEnding = iota
+	LineEndingCRLF
+)
+
+type Buffer struct {
+	lines      [][]rune
+	lineEnding LineEnding
+}
+
+func New() *Buffer {
+	return &Buffer{
+		lines:      [][]rune{{}},
+		lineEnding: LineEndingLF,
+	}
+}
+
+func Load(r io.Reader) (*Buffer, error) {
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+
+	b := &Buffer{
+		lineEnding: LineEndingLF,
+	}
+
+	if len(data) == 0 {
+		b.lines = [][]rune{{}}
+		return b, nil
+	}
+
+	if bytes.Contains(data, []byte("\r\n")) {
+		b.lineEnding = LineEndingCRLF
+	}
+
+	scanner := bufio.NewScanner(bytes.NewReader(data))
+	scanner.Buffer(make([]byte, 64*1024), 10*1024*1024)
+
+	for scanner.Scan() {
+		b.lines = append(b.lines, []rune(scanner.Text()))
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(b.lines) == 0 {
+		b.lines = [][]rune{{}}
+	}
+
+	return b, nil
+}
+
+func (b *Buffer) LineCount() int {
+	return len(b.lines)
+}
+
+func (b *Buffer) Line(i int) []rune {
+	if i < 0 || i >= len(b.lines) {
+		return nil
+	}
+	out := make([]rune, len(b.lines[i]))
+	copy(out, b.lines[i])
+	return out
+}
+
+func (b *Buffer) LineEnding() LineEnding {
+	return b.lineEnding
+}
