@@ -32,6 +32,7 @@ O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda
 - **Tabstop 4**, com a tab indo até a próxima parada. Por enquanto, 1 rune ocupa 1 célula: o wcwidth para CJK é uma **limitação conhecida**, ainda não feita.
 - **Codificação**: UTF-8 é o padrão. O BOM de UTF-8 é removido e lembrado. UTF-16 é recusado com `ErrUTF16`.
 - **Teclas de scroll no `editor.handleKey` são andaime**: a engine vim do MS4 substitui essa parte.
+- **D2 na prática (MS2)**: a edição usa slices simples por linha, ainda sem gap buffer. A API é `Insert(pos, texto) → fimPos` e `Delete(início, fim) → textoRemovido`; o `Delete` devolve o texto justamente para servir de base ao undo. Medido: inserir uma rune numa linha típica leva cerca de 0,4 µs, e numa linha de 100 mil caracteres cerca de 0,26 ms. O gap buffer só entra se algum número mandar.
 
 ### Medições (benchmarks em `*_bench_test.go`, `go test -run '^$' -bench=. -benchmem ./...`)
 

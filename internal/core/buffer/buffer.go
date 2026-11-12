@@ -26,6 +26,7 @@ type Buffer struct {
 	lines      [][]rune
 	lineEnding LineEnding
 	hasBOM     bool
+	modified   bool
 }
 
 func New() *Buffer {
