@@ -93,6 +93,13 @@ func (b *Buffer) Line(i int) []rune {
 	return out
 }
 
+func (b *Buffer) LineLen(i int) int {
+	if i < 0 || i >= len(b.lines) {
+		return 0
+	}
+	return len(b.lines[i])
+}
+
 func (b *Buffer) LineEnding() LineEnding {
 	return b.lineEnding
 }

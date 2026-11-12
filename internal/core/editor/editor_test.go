@@ -49,16 +49,37 @@ func TestEditorViewportAndScroll(t *testing.T) {
 		}
 	})
 
-	t.Run("tecla j desce 1 linha", func(t *testing.T) {
+	t.Run("tecla j move o cursor sem rolar enquanto ele esta visivel", func(t *testing.T) {
 		buf := makeNumberedBuffer(t, 100)
 		ed := New(buf, "teste.go")
 		ed.HandleEvent(input.NewResizeEvent(80, 11))
 
-		ed.HandleEvent(input.NewKeyEvent(input.Key{Code: input.KeyRune, Rune: 'j'}))
+		press(ed, 'j')
+
+		frame := ed.Frame()
+		if got := frameLineText(frame.Lines[0]); got != "linha 1" {
+			t.Errorf("primeira linha apos 'j' = %q, esperava %q", got, "linha 1")
+		}
+		if frame.Cursor != (render.ScreenPos{Row: 1, Col: 0}) {
+			t.Errorf("Cursor = %+v, esperava {Row:1 Col:0}", frame.Cursor)
+		}
+	})
+
+	t.Run("cursor passando do rodape rola a tela", func(t *testing.T) {
+		buf := makeNumberedBuffer(t, 100)
+		ed := New(buf, "teste.go")
+		ed.HandleEvent(input.NewResizeEvent(80, 11))
+
+		for i := 0; i < 10; i++ {
+			press(ed, 'j')
+		}
 
 		frame := ed.Frame()
 		if got := frameLineText(frame.Lines[0]); got != "linha 2" {
-			t.Errorf("primeira linha apos 'j' = %q, esperava %q", got, "linha 2")
+			t.Errorf("primeira linha = %q, esperava %q", got, "linha 2")
+		}
+		if frame.Cursor.Row != 9 {
+			t.Errorf("Cursor.Row = %d, esperava 9 (rodape)", frame.Cursor.Row)
 		}
 	})
 
@@ -97,4 +118,184 @@ func TestEditorViewportAndScroll(t *testing.T) {
 			t.Errorf("linha 5 (padding) = %q, esperava %q", got, "~")
 		}
 	})
+}
+
+func press(ed *Editor, r rune) {
+	ed.HandleEvent(input.NewKeyEvent(input.Key{Code: input.KeyRune, Rune: r}))
+}
+
+func pressCode(ed *Editor, c input.KeyCode) {
+	ed.HandleEvent(input.NewKeyEvent(input.Key{Code: c}))
+}
+
+func editorFrom(t *testing.T, src string) *Editor {
+	t.Helper()
+	buf, err := buffer.Load(strings.NewReader(src))
+	if err != nil {
+		t.Fatalf("erro ao criar buffer de teste: %v", err)
+	}
+	ed := New(buf, "teste.go")
+	ed.HandleEvent(input.NewResizeEvent(80, 24))
+	return ed
+}
+
+func TestCursorMovement(t *testing.T) {
+	const src = "fmt.Println(\"uma linha bem comprida\")\n}\nreturn errors.New(\"outra linha longa\")\n\nabc\n"
+
+	tests := []struct {
+		name string
+		keys func(ed *Editor)
+		want buffer.Pos
+	}{
+		{
+			name: "h na coluna 0 fica parado",
+			keys: func(ed *Editor) { press(ed, 'h') },
+			want: buffer.Pos{Line: 0, Col: 0},
+		},
+		{
+			name: "k na primeira linha fica parado",
+			keys: func(ed *Editor) { press(ed, 'k') },
+			want: buffer.Pos{Line: 0, Col: 0},
+		},
+		{
+			name: "l anda uma coluna",
+			keys: func(ed *Editor) { press(ed, 'l'); press(ed, 'l') },
+			want: buffer.Pos{Line: 0, Col: 2},
+		},
+		{
+			name: "l no ultimo caractere fica parado",
+			keys: func(ed *Editor) {
+				press(ed, 'j')
+				press(ed, 'j')
+				press(ed, 'j')
+				press(ed, 'j')
+				for i := 0; i < 10; i++ {
+					press(ed, 'l')
+				}
+			},
+			want: buffer.Pos{Line: 4, Col: 2},
+		},
+		{
+			name: "setas funcionam como hjkl",
+			keys: func(ed *Editor) {
+				pressCode(ed, input.KeyRight)
+				pressCode(ed, input.KeyDown)
+				pressCode(ed, input.KeyLeft)
+			},
+			want: buffer.Pos{Line: 1, Col: 0},
+		},
+		{
+			name: "coluna desejada: longa, curta, longa volta para a coluna original",
+			keys: func(ed *Editor) {
+				for i := 0; i < 20; i++ {
+					press(ed, 'l')
+				}
+				press(ed, 'j')
+				press(ed, 'j')
+			},
+			want: buffer.Pos{Line: 2, Col: 20},
+		},
+		{
+			name: "coluna desejada: na linha curta o cursor fica no ultimo caractere",
+			keys: func(ed *Editor) {
+				for i := 0; i < 20; i++ {
+					press(ed, 'l')
+				}
+				press(ed, 'j')
+			},
+			want: buffer.Pos{Line: 1, Col: 0},
+		},
+		{
+			name: "linha vazia tem coluna 0",
+			keys: func(ed *Editor) {
+				press(ed, 'l')
+				press(ed, 'l')
+				press(ed, 'j')
+				press(ed, 'j')
+				press(ed, 'j')
+			},
+			want: buffer.Pos{Line: 3, Col: 0},
+		},
+		{
+			name: "h atualiza a coluna desejada",
+			keys: func(ed *Editor) {
+				for i := 0; i < 20; i++ {
+					press(ed, 'l')
+				}
+				press(ed, 'j')
+				press(ed, 'h')
+				press(ed, 'j')
+			},
+			want: buffer.Pos{Line: 2, Col: 0},
+		},
+		{
+			name: "$ vai ao fim e gruda no fim nas proximas linhas",
+			keys: func(ed *Editor) {
+				press(ed, '$')
+				press(ed, 'j')
+				press(ed, 'j')
+			},
+			want: buffer.Pos{Line: 2, Col: 37},
+		},
+		{
+			name: "0 volta ao inicio da linha",
+			keys: func(ed *Editor) { press(ed, '$'); press(ed, '0') },
+			want: buffer.Pos{Line: 0, Col: 0},
+		},
+		{
+			name: "G vai para a ultima linha e g volta para a primeira",
+			keys: func(ed *Editor) { press(ed, 'G'); press(ed, 'g') },
+			want: buffer.Pos{Line: 0, Col: 0},
+		},
+		{
+			name: "G vai para a ultima linha",
+			keys: func(ed *Editor) { press(ed, 'G') },
+			want: buffer.Pos{Line: 4, Col: 0},
+		},
+		{
+			name: "PgDn alem do fim para na ultima linha",
+			keys: func(ed *Editor) { pressCode(ed, input.KeyPageDown) },
+			want: buffer.Pos{Line: 4, Col: 0},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ed := editorFrom(t, src)
+			tt.keys(ed)
+			if got := ed.Cursor(); got != tt.want {
+				t.Errorf("Cursor() = %+v, esperava %+v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCursorScreenPosWithTabs(t *testing.T) {
+	ed := editorFrom(t, "func main() {\n\t\tx := 1\n}\n")
+
+	press(ed, 'j')
+	press(ed, 'l')
+	press(ed, 'l')
+
+	frame := ed.Frame()
+	if ed.Cursor() != (buffer.Pos{Line: 1, Col: 2}) {
+		t.Fatalf("Cursor() = %+v, esperava {Line:1 Col:2}", ed.Cursor())
+	}
+	if frame.Cursor != (render.ScreenPos{Row: 1, Col: 8}) {
+		t.Errorf("Frame.Cursor = %+v, esperava {Row:1 Col:8} (duas tabs = 8 celulas)", frame.Cursor)
+	}
+	if got := frameLineText(frame.Lines[1]); []rune(got)[frame.Cursor.Col] != 'x' {
+		t.Errorf("na coluna %d da tela esta %q, esperava 'x'", frame.Cursor.Col, string([]rune(got)[frame.Cursor.Col]))
+	}
+}
+
+func TestStatusShowsCursor(t *testing.T) {
+	ed := editorFrom(t, "abc\ndef\n")
+	press(ed, 'j')
+	press(ed, 'l')
+
+	want := " teste.go   Ln 2/2, Col 2"
+	if got := ed.Frame().Status; got != want {
+		t.Errorf("Status = %q, esperava %q", got, want)
+	}
 }

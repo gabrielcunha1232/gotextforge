@@ -28,6 +28,15 @@ func (v *Viewport) ScrollBottom(totalLines int) {
 	v.Top = v.maxTop(totalLines)
 }
 
+func (v *Viewport) EnsureVisible(line, totalLines int) {
+	if line < v.Top {
+		v.Top = line
+	} else if line >= v.Top+v.Height {
+		v.Top = line - v.Height + 1
+	}
+	v.clamp(totalLines)
+}
+
 func (v *Viewport) Resize(height, totalLines int) {
 	if height < 1 {
 		height = 1

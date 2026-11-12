@@ -33,8 +33,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() tea.View {
-	v := tea.NewView(RenderFrame(m.editor.Frame()))
+	frame := m.editor.Frame()
+	v := tea.NewView(RenderFrame(frame))
 	v.AltScreen = true
+	v.Cursor = tea.NewCursor(frame.Cursor.Col, frame.Cursor.Row)
 	return v
 }
 

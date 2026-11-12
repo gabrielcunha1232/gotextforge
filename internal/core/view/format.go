@@ -18,32 +18,53 @@ func FormatLine(runes []rune, width, tabStop int) string {
 			break
 		}
 
-		if r == '\t' {
-			spaces := tabStop - (col % tabStop)
-			for s := 0; s < spaces && col < width; s++ {
+		w := cellWidth(r, col, tabStop)
+		switch {
+		case r == '\t':
+			for s := 0; s < w && col < width; s++ {
 				out = append(out, ' ')
 				col++
 			}
-			continue
-		}
-
-		if isControlRune(r) {
-			ctrl := controlNotation(r)
-			for _, cr := range ctrl {
+		case isControlRune(r):
+			for _, cr := range controlNotation(r) {
 				if col >= width {
 					break
 				}
 				out = append(out, cr)
 				col++
 			}
-			continue
+		default:
+			out = append(out, r)
+			col++
 		}
-
-		out = append(out, r)
-		col++
 	}
 
 	return string(out)
+}
+
+func ScreenCol(runes []rune, runeCol, tabStop int) int {
+	if tabStop <= 0 {
+		tabStop = DefaultTabStop
+	}
+	col := 0
+	for i, r := range runes {
+		if i >= runeCol {
+			break
+		}
+		col += cellWidth(r, col, tabStop)
+	}
+	return col
+}
+
+func cellWidth(r rune, col, tabStop int) int {
+	switch {
+	case r == '\t':
+		return tabStop - (col % tabStop)
+	case isControlRune(r):
+		return len(controlNotation(r))
+	default:
+		return 1
+	}
 }
 
 func isControlRune(r rune) bool {
