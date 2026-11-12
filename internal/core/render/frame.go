@@ -1,8 +1,8 @@
 package render
 
-
 type ColorKind uint8
-const(
+
+const (
 	ColorDefault ColorKind = iota
 	ColorANSI
 	ColorRGB
@@ -29,22 +29,22 @@ var (
 )
 
 type Color struct {
-	Kind ColorKind
-	Index uint8
+	Kind    ColorKind
+	Index   uint8
 	R, G, B uint8
 }
 
 type Style struct {
-	Fg Color
-	Bg Color
-	Bold bool
-	Italic bool
+	Fg        Color
+	Bg        Color
+	Bold      bool
+	Italic    bool
 	Underline bool
 	Undercurl bool
 }
 
-type Span struct{
-	Text string
+type Span struct {
+	Text  string
 	Style Style
 }
 
@@ -56,11 +56,12 @@ type ScreenPos struct {
 }
 
 type Frame struct {
-	Lines []StyledLine
+	Lines  []StyledLine
 	Cursor ScreenPos
 	Status string
 }
 
+// ANSI cria uma cor da paleta de 256 cores: 0–15 básicas, 16–255 estendidas.
 func ANSI(index uint8) Color {
 	return Color{Kind: ColorANSI, Index: index}
 }
