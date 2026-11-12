@@ -47,12 +47,17 @@ func FormatLine(runes []rune, width, tabStop int) string {
 }
 
 func isControlRune(r rune) bool {
-	return (r >= 0 && r < 0x20 && r != '\t') || r == 0x7f
+	return (r >= 0 && r < 0x20 && r != '\t') || r == 0x7f || (r >= 0x80 && r <= 0x9f)
 }
 
-func controlNotation(r rune) [2]rune {
-	if r == 0x7f {
-		return [2]rune{'^', '?'}
+func controlNotation(r rune) []rune {
+	switch {
+	case r == 0x7f:
+		return []rune{'^', '?'}
+	case r >= 0x80:
+		const hex = "0123456789abcdef"
+		return []rune{'<', rune(hex[r>>4]), rune(hex[r&0xf]), '>'}
+	default:
+		return []rune{'^', r + 64}
 	}
-	return [2]rune{'^', r + 64}
 }

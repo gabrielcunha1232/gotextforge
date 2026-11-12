@@ -1,6 +1,7 @@
 package buffer
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -95,6 +96,70 @@ func TestBufferLoad(t *testing.T) {
 
 			if buf.Line(-1) != nil || buf.Line(buf.LineCount()) != nil {
 				t.Errorf("esperava nil ao acessar índices fora dos limites")
+			}
+		})
+	}
+}
+
+func TestBufferLoadEncoding(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantErr   error
+		wantBOM   bool
+		wantLines []string
+	}{
+		{
+			name:      "UTF-8 sem BOM",
+			input:     "package main\n",
+			wantLines: []string{"package main"},
+		},
+		{
+			name:      "UTF-8 com BOM remove o BOM e registra",
+			input:     "\xef\xbb\xbfpackage main\n",
+			wantBOM:   true,
+			wantLines: []string{"package main"},
+		},
+		{
+			name:      "UTF-8 com BOM e nada mais vira 1 linha vazia",
+			input:     "\xef\xbb\xbf",
+			wantBOM:   true,
+			wantLines: []string{""},
+		},
+		{
+			name:    "UTF-16 LE e recusado",
+			input:   "\xff\xfe#\x00",
+			wantErr: ErrUTF16,
+		},
+		{
+			name:    "UTF-16 BE e recusado",
+			input:   "\xfe\xff\x00#",
+			wantErr: ErrUTF16,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf, err := Load(strings.NewReader(tt.input))
+			if tt.wantErr != nil {
+				if !errors.Is(err, tt.wantErr) {
+					t.Fatalf("Load() erro = %v, esperava %v", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Load falhou inesperadamente: %v", err)
+			}
+			if buf.HasBOM() != tt.wantBOM {
+				t.Errorf("HasBOM() = %v, esperava %v", buf.HasBOM(), tt.wantBOM)
+			}
+			if buf.LineCount() != len(tt.wantLines) {
+				t.Fatalf("LineCount() = %d, esperava %d", buf.LineCount(), len(tt.wantLines))
+			}
+			for i, want := range tt.wantLines {
+				if got := string(buf.Line(i)); got != want {
+					t.Errorf("Line(%d) = %q, esperava %q", i, got, want)
+				}
 			}
 		})
 	}

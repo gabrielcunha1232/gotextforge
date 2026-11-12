@@ -3,7 +3,16 @@ package buffer
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io"
+)
+
+var ErrUTF16 = errors.New("arquivo em UTF-16 não é suportado")
+
+var (
+	bomUTF8    = []byte{0xEF, 0xBB, 0xBF}
+	bomUTF16LE = []byte{0xFF, 0xFE}
+	bomUTF16BE = []byte{0xFE, 0xFF}
 )
 
 type LineEnding uint8
@@ -16,6 +25,7 @@ const (
 type Buffer struct {
 	lines      [][]rune
 	lineEnding LineEnding
+	hasBOM     bool
 }
 
 func New() *Buffer {
@@ -31,8 +41,17 @@ func Load(r io.Reader) (*Buffer, error) {
 		return nil, err
 	}
 
+	if bytes.HasPrefix(data, bomUTF16LE) || bytes.HasPrefix(data, bomUTF16BE) {
+		return nil, ErrUTF16
+	}
+
 	b := &Buffer{
 		lineEnding: LineEndingLF,
+	}
+
+	if bytes.HasPrefix(data, bomUTF8) {
+		b.hasBOM = true
+		data = data[len(bomUTF8):]
 	}
 
 	if len(data) == 0 {
@@ -76,4 +95,8 @@ func (b *Buffer) Line(i int) []rune {
 
 func (b *Buffer) LineEnding() LineEnding {
 	return b.lineEnding
+}
+
+func (b *Buffer) HasBOM() bool {
+	return b.hasBOM
 }
