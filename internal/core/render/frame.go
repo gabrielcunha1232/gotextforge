@@ -52,7 +52,7 @@ type StyledLine []Span
 
 type ScreenPos struct {
 	Row int
-	Col int
+	Col int // em celulas de tela, nao runes: '世' ocupa 2 celulas (wcwidth)
 }
 
 type Frame struct {
