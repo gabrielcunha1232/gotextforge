@@ -59,6 +59,10 @@ func (e *Editor) isPristineIntro() bool {
 }
 
 func (e *Editor) OpenFile(path string) {
+	switch e.mode {
+	case ModeExplorer, ModeFinder, ModePrompt:
+		e.mode = ModeNormal
+	}
 	for i, d := range e.docs {
 		if d.path != "" && samePath(d.path, path) {
 			e.switchTo(i)

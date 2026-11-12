@@ -14,10 +14,19 @@ func main() {
 	ed.SetLanguageServer(func(path string) editor.LanguageClient {
 		return lsp.Start(path, lsp.GoplsStarter)
 	})
-	for _, path := range os.Args[1:] {
-		ed.OpenFile(path)
+	opened := false
+	for _, arg := range os.Args[1:] {
+		if info, err := os.Stat(arg); err == nil && info.IsDir() {
+			ed.SetRoot(arg)
+			ed.ShowExplorer()
+			continue
+		}
+		ed.OpenFile(arg)
+		opened = true
 	}
-	ed.SwitchToFirst()
+	if opened {
+		ed.SwitchToFirst()
+	}
 
 	err := tui.Run(ed)
 	ed.Close()

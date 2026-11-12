@@ -89,6 +89,7 @@ type Frame struct {
 	Lines       []StyledLine
 	Cursor      ScreenPos
 	CursorShape CursorShape
+	HideCursor  bool
 	Status      StyledLine
 }
 

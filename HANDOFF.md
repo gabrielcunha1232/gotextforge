@@ -20,6 +20,13 @@
   - o indicador `gopls…` / `gopls` / `gopls!` na status line mostra o estado do servidor.
 - **Busca (MS6):** `/` e `?` destacam as ocorrências enquanto você digita; `n N`, `* #` (palavra inteira), smart-case, volta ao início com aviso, `:noh`.
 - **Abas (MS6):** `:e arquivo` (cria se não existir), `H`/`L` e `gt`/`gT` trocam de aba, linha de abas no topo (bufferline) com `●` nas modificadas, `:q` fecha a aba (sai na última), `:qa[!]`, `:wa`, `:wqa`, `:bn`/`:bp`. Um gopls só para todos os arquivos, e cada diagnóstico vai para a aba dele.
+- **Navegação pelo projeto (pós-MS6):**
+  - tecla líder Espaço (como no LazyVim);
+  - explorador lateral `Espaço e`, no estilo neo-tree: `a` cria (`/` no fim cria pasta, caminhos intermediários são criados), `r` renomeia (as abas acompanham), `d` apaga com confirmação (só pastas vazias, e nunca um arquivo com alterações não salvas), Backspace sobe uma pasta, `.` troca a raiz, `H` mostra os ocultos;
+  - busca fuzzy `Espaço Espaço` (pacote `internal/core/fuzzy`) com "+ criar" quando não acha nada;
+  - `Espaço ,` lista as abas, e `Espaço f n` cria um arquivo novo;
+  - tela inicial com ações (`f e n p i q`) e a pasta atual;
+  - `gotextforge pasta/` abre com essa raiz e o explorador aberto.
 - **Visual:** paleta truecolor inspirada no Tokyo Night (assume terminal escuro); números de linha relativos, com o da linha atual em laranja; destaque da linha do cursor; status line estilo lualine (modo colorido, arquivo `[+]`, comando pendente, `go`, progresso, linha:coluna); erros em vermelho; tela inicial com logo em degradê.
 
 O critério do MS2 foi verificado de ponta a ponta: o editor modifica o `main.go` de um módulo real, salva com `:wq`, e o `go build` e o binário rodam.
@@ -145,5 +152,12 @@ O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda
 - **Vários documentos (MS6):** o `Editor` embute `*document` (buffer, caminho, cursor, viewport, cache de syntax, diagnósticos e versão sincronizada). Trocar de aba é só `e.document = e.docs[i]`, então todo o código antigo que usa `e.buf`/`e.cursor` continua valendo para a aba atual. O `layout()` redimensiona os viewports quando a linha de abas aparece ou some.
 - **O cliente LSP recebe o caminho em cada chamada** (`Open/Change/Save/CloseDocument/Hover/Completion(path, ...)`), e o `DiagnosticsEvent` traz a `URI`. O gopls só inicia quando o primeiro `.go` abre (pelo `SetLanguageServer(starter)`), e o TUI começa a escutar os eventos quando o canal aparece (`model.listen`).
 - **Carregamento injetável:** `editor.load` (os testes usam `fakeFiles`), com o mesmo padrão do `save`.
+- **Espaço virou a tecla líder:** antes era `l` (direita), como no vim puro; agora segue o LazyVim. O parser tem um `leaderMap` (`e`, ` `, `ff`, `,`, `fb`, `fn`, `bd`); para adicionar um atalho, basta uma linha ali mais a `Action`.
+- **Modos novos:** `ModeExplorer`, `ModeFinder` e `ModePrompt`. O prompt é genérico (`openPrompt(label, inicial, submit)`), usado para criar, renomear e confirmar; a status line mostra o label e o texto. O `render.Frame` ganhou `HideCursor` (usado com o foco no explorador).
+- **Layout com o painel:** o `Frame()` encolhe `e.width` temporariamente, monta o editor (`editorFrame`) e prefixa o painel em cada linha. Em telas estreitas, o painel só aparece focado, ocupando a tela inteira.
+- **Criar arquivo pela interface grava no disco na hora** (vazio), seja pelo explorador, pela busca ou por `Espaço f n`. Já o `:e` de um arquivo inexistente continua só abrindo um buffer novo (semântica do vim).
+- **A busca de arquivos ignora** os arquivos e pastas ocultos (`.git`, `.env`...), além de `node_modules` e das configurações de IDE. O limite é de 50 mil arquivos.
+- **Abrir um arquivo sempre devolve o foco ao editor** (`OpenFile` sai dos modos explorer, finder e prompt).
+- **O teste aleatório roda numa pasta temporária** (`SetRoot(t.TempDir())`). Sem isso, as teclas aleatórias poderiam criar ou apagar arquivos no repositório pelo explorador. Os testes de navegação também usam pastas temporárias reais.
 - **Sair é decisão do core**: `editor.ShouldQuit()`. O TUI só obedece; ele não trata mais o Ctrl+c.
 - **Undo mora no buffer** (`history.go`): cada `Insert`/`Delete` é registrado. O editor agrupa as mudanças com `BeginChange`/`EndChange`: um comando do modo normal é um passo, e uma sessão inteira de insert (do `i` ao Esc) também é um passo. O undo devolve o cursor para onde ele estava **antes** do comando. O `Modified()` compara o id do topo da pilha com o id salvo, então desfazer até o estado salvo tira o `[+]`.

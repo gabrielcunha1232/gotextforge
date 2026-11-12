@@ -20,6 +20,7 @@ func TestSequenciasAleatoriasNaoQuebramOEditor(t *testing.T) {
 	specials := []input.KeyCode{input.KeyEsc, input.KeyEnter, input.KeyBackspace, input.KeyDelete,
 		input.KeyUp, input.KeyDown, input.KeyLeft, input.KeyRight, input.KeyPageDown, input.KeyPageUp, input.KeyHome, input.KeyEnd}
 
+	sandbox := t.TempDir()
 	rng := rand.New(rand.NewPCG(42, 2026))
 	for round := 0; round < 400; round++ {
 		src := sources[rng.IntN(len(sources))]
@@ -27,6 +28,7 @@ func TestSequenciasAleatoriasNaoQuebramOEditor(t *testing.T) {
 		ed.path = "aleatorio.go"
 		ed.save = (&fakeSaver{}).save
 		ed.load = fakeFiles(map[string]string{"outro.go": src, "e": "x\n"})
+		ed.SetRoot(sandbox)
 		if rng.IntN(2) == 0 {
 			ed.OpenFile("outro.go")
 		}

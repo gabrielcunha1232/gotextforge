@@ -18,6 +18,10 @@ Editor de texto modal para Go, no terminal, no estilo do Neovim/LazyVim. É escr
   - `K` para ver a documentação numa janela flutuante;
   - completion automático ao digitar.
 - **Syntax highlight** de Go via `go/scanner`. Comentários de bloco e raw strings que atravessam linhas são tratados corretamente: a validação foi feita contra toda a stdlib do Go (≈3 milhões de linhas, zero divergências).
+- **Navegação pelo projeto sem digitar caminhos:**
+  - explorador lateral (como o neo-tree) para criar, renomear e apagar arquivos e pastas;
+  - busca fuzzy de arquivos (como o Telescope): `edtgo` acha `editor/editor.go`;
+  - tela inicial com ações de uma tecla.
 - **Vários arquivos em abas**, uma busca `/` com destaque enquanto você digita, e uma status line no estilo lualine.
 - **Rápido em arquivos grandes:** só as linhas visíveis são desenhadas. Um quadro leva menos de 1 ms, e abrir um arquivo de 110 mil linhas não trava.
 - **Seguro com os seus arquivos:**
@@ -32,11 +36,38 @@ Requer Go 1.27+ (veja o `go.mod`) e, para os recursos de LSP, o [gopls](https://
 
 ```
 go install golang.org/x/tools/gopls@latest
-go run ./cmd/gotextforge                  # tela inicial
+go run ./cmd/gotextforge                  # tela inicial na pasta atual
+go run ./cmd/gotextforge ~/meu-projeto    # abre a pasta com o explorador
 go run ./cmd/gotextforge main.go util.go  # abre arquivos em abas
 ```
 
 O tema usa truecolor e foi feito para terminais escuros (como o terminal do VS Code e o Windows Terminal).
+
+## Navegando pelo projeto
+
+A tecla líder é o **Espaço**, como no LazyVim.
+
+| Atalho | |
+|---|---|
+| `Espaço Espaço` ou `Espaço f f` | buscar arquivo pelo nome (fuzzy); se não existir, oferece **+ criar** |
+| `Espaço e` | abrir, focar ou fechar o explorador |
+| `Espaço f n` | novo arquivo (já sugere a pasta do arquivo atual) |
+| `Espaço ,` | lista as abas abertas |
+| `Espaço b d` | fechar a aba |
+
+| No explorador | |
+|---|---|
+| `j k`, `g G` | mover |
+| `l` / `Enter` | entrar na pasta ou abrir o arquivo |
+| `h` | fechar a pasta ou ir para a pasta pai |
+| `a` | criar arquivo (termine com `/` para criar uma pasta; `a/b/c.go` cria tudo) |
+| `r`, `d` | renomear, apagar (com confirmação; pasta só se estiver vazia) |
+| `Backspace` | subir uma pasta (navega pelo disco inteiro) |
+| `.` | usar a pasta selecionada como pasta do projeto |
+| `H`, `R` | mostrar ou ocultar arquivos ocultos, atualizar |
+| `Esc`, `q` | voltar ao editor, fechar o explorador |
+
+Na tela inicial: `f` busca, `e` explora, `n` cria arquivo, `p` troca de pasta, `q` sai.
 
 ## Atalhos
 

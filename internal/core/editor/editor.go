@@ -21,6 +21,9 @@ const (
 	ModeInsert
 	ModeCommand
 	ModeSearch
+	ModePrompt
+	ModeExplorer
+	ModeFinder
 )
 
 type SaveFunc func(path string, src io.WriterTo) error
@@ -60,21 +63,25 @@ func newDocument(buf *buffer.Buffer, path string) *document {
 
 type Editor struct {
 	*document
-	docs    []*document
-	mode    Mode
-	save    SaveFunc
-	load    LoadFunc
-	cmdline []rune
-	message string
-	quit    bool
-	parser  engine.Parser
-	reg     register
-	lsp     lspState
-	hover   *hoverPopup
-	comp    *completion
-	search  searchState
-	width   int
-	height  int
+	docs     []*document
+	mode     Mode
+	save     SaveFunc
+	load     LoadFunc
+	cmdline  []rune
+	message  string
+	quit     bool
+	parser   engine.Parser
+	reg      register
+	lsp      lspState
+	hover    *hoverPopup
+	comp     *completion
+	search   searchState
+	root     string
+	explorer explorer
+	finder   *finder
+	prompt   *prompt
+	width    int
+	height   int
 }
 
 func New(buf *buffer.Buffer, path string) *Editor {
@@ -124,6 +131,12 @@ func (e *Editor) HandleEvent(ev input.Event) {
 			if e.mode == ModeInsert {
 				e.afterInsertKey(ev.Key)
 			}
+		case ModePrompt:
+			e.handlePromptKey(ev.Key)
+		case ModeExplorer:
+			e.handleExplorerKey(ev.Key)
+		case ModeFinder:
+			e.handleFinderKey(ev.Key)
 		case ModeCommand, ModeSearch:
 			e.handleCommandKey(ev.Key)
 		default:

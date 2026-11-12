@@ -53,17 +53,23 @@ var (
 )
 
 var modeColors = map[Mode]render.Color{
-	ModeNormal:  colBlue,
-	ModeInsert:  colGreen,
-	ModeCommand: colYellow,
-	ModeSearch:  colYellow,
+	ModeNormal:   colBlue,
+	ModeInsert:   colGreen,
+	ModeCommand:  colYellow,
+	ModeSearch:   colYellow,
+	ModePrompt:   colYellow,
+	ModeExplorer: colTeal,
+	ModeFinder:   colMagenta,
 }
 
 var modeNames = map[Mode]string{
-	ModeNormal:  "NORMAL",
-	ModeInsert:  "INSERT",
-	ModeCommand: "COMMAND",
-	ModeSearch:  "SEARCH",
+	ModeNormal:   "NORMAL",
+	ModeInsert:   "INSERT",
+	ModeCommand:  "COMMAND",
+	ModeSearch:   "SEARCH",
+	ModePrompt:   "PROMPT",
+	ModeExplorer: "ARQUIVOS",
+	ModeFinder:   "BUSCAR",
 }
 
 func withBg(s render.Style, bg render.Color) render.Style {

@@ -74,6 +74,9 @@ func (m model) View() tea.View {
 	if frame.CursorShape == render.CursorBar {
 		v.Cursor.Shape = tea.CursorBar
 	}
+	if frame.HideCursor {
+		v.Cursor = nil
+	}
 	return v
 }
 

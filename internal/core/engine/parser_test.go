@@ -150,3 +150,37 @@ func TestParserCountGigante(t *testing.T) {
 		t.Errorf("count multiplicado = %d, esperava o limite %d", got.Count, countLimit)
 	}
 }
+
+func TestParserLider(t *testing.T) {
+	tests := []struct {
+		keys string
+		want Action
+	}{
+		{" e", ActionExplorer},
+		{"  ", ActionFindFiles},
+		{" ff", ActionFindFiles},
+		{" ,", ActionFindBuffers},
+		{" fb", ActionFindBuffers},
+		{" fn", ActionNewFile},
+		{" bd", ActionCloseTab},
+	}
+	for _, tt := range tests {
+		var p Parser
+		got, done := feedAll(&p, tt.keys)
+		if !done || got.Action != tt.want {
+			t.Errorf("%q = %+v (done %v), esperava acao %v", tt.keys, got, done, tt.want)
+		}
+	}
+
+	var p Parser
+	feedAll(&p, " f")
+	if p.Pending() != "␣f" {
+		t.Errorf("pendente do lider = %q", p.Pending())
+	}
+	for _, keys := range []string{" x", " fx", "2 e", "d e"} {
+		var p Parser
+		if got, done := feedAll(&p, keys); done && got.Action != ActionNone {
+			t.Errorf("%q nao deveria virar acao: %+v", keys, got)
+		}
+	}
+}

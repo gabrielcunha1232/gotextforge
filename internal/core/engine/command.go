@@ -90,6 +90,11 @@ const (
 	ActionSearchWordBackward
 	ActionNextTab
 	ActionPrevTab
+	ActionExplorer
+	ActionFindFiles
+	ActionFindBuffers
+	ActionNewFile
+	ActionCloseTab
 )
 
 type Command struct {

@@ -17,6 +17,9 @@ type register struct {
 }
 
 func (e *Editor) handleNormalKey(k input.Key) {
+	if e.showIntro() && e.parser.Pending() == "" && e.handleDashboardKey(k) {
+		return
+	}
 	cmd, done := e.parser.Feed(k)
 	if done {
 		e.run(cmd)
@@ -247,6 +250,16 @@ func (e *Editor) runAction(cmd engine.Command) {
 		e.enterSearch(cmd.Action == engine.ActionSearchForward)
 	case engine.ActionSearchNext, engine.ActionSearchPrev:
 		e.repeatSearch(cmd.Action == engine.ActionSearchNext, cmd.Times())
+	case engine.ActionExplorer:
+		e.toggleExplorer()
+	case engine.ActionFindFiles:
+		e.openFileFinder()
+	case engine.ActionFindBuffers:
+		e.openBufferFinder()
+	case engine.ActionNewFile:
+		e.promptNewFile()
+	case engine.ActionCloseTab:
+		e.closeCurrent(false)
 	case engine.ActionNextTab:
 		e.cycleTab(cmd.Times())
 	case engine.ActionPrevTab:

@@ -13,6 +13,9 @@ type searchState struct {
 }
 
 func (e *Editor) promptLine() []rune {
+	if e.mode == ModePrompt && e.prompt != nil {
+		return append([]rune(e.prompt.label), e.prompt.text...)
+	}
 	prompt := ':'
 	if e.mode == ModeSearch {
 		prompt = '/'

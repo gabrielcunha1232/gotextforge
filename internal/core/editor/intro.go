@@ -3,6 +3,7 @@ package editor
 import (
 	"strings"
 
+	"github.com/gabrielcunha1232/gotextforge/internal/core/input"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/render"
 )
 
@@ -19,9 +20,34 @@ var logoFont = map[rune][5]string{
 const logoWord = "GOTEXTFORGE"
 
 var introHints = [][2]string{
+	{"f", "buscar arquivo"},
+	{"e", "explorar a pasta"},
+	{"n", "novo arquivo"},
+	{"p", "trocar de pasta"},
 	{"i", "começar a escrever"},
-	{":q", "sair"},
-	{"gotextforge arquivo.go", "abrir um arquivo"},
+	{"q", "sair"},
+}
+
+func (e *Editor) handleDashboardKey(k input.Key) bool {
+	if k.Code != input.KeyRune || k.Mod != 0 {
+		return false
+	}
+	switch k.Rune {
+	case 'f':
+		e.openFileFinder()
+	case 'e':
+		e.openExplorer(true)
+	case 'n':
+		e.promptNewFile()
+	case 'p':
+		e.openExplorer(true)
+		e.message = "Backspace sobe uma pasta · l/Enter entra · . escolhe a pasta do projeto"
+	case 'q':
+		e.quit = true
+	default:
+		return false
+	}
+	return true
 }
 
 func (e *Editor) showIntro() bool {
@@ -62,7 +88,8 @@ func (e *Editor) overlayIntro(lines []render.StyledLine) {
 
 	rows := logoRows()
 	logoWidth := len([]rune(rows[0]))
-	if e.width >= logoWidth+2 {
+	withoutLogo := 2 + 3 + len(introHints) + 2
+	if e.width >= logoWidth+2 && len(lines) >= withoutLogo+len(rows)+1 {
 		for _, row := range rows {
 			var line render.StyledLine
 			for x, r := range []rune(row) {
@@ -81,6 +108,7 @@ func (e *Editor) overlayIntro(lines []render.StyledLine) {
 
 	block = append(block,
 		render.StyledLine{{Text: "editor modal para Go", Style: styleIntroSub}},
+		render.StyledLine{{Text: truncateText(sanitize(e.projectRoot()), max(e.width-4, 1)), Style: render.Style{Fg: colDark3}}},
 		nil,
 	)
 	keyWidth, descWidth := 0, 0

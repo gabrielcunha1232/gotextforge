@@ -13,7 +13,27 @@ const (
 	waitChar
 	waitG
 	waitObject
+	waitLeader
 )
+
+var leaderMap = map[string]Action{
+	"e":  ActionExplorer,
+	" ":  ActionFindFiles,
+	"ff": ActionFindFiles,
+	",":  ActionFindBuffers,
+	"fb": ActionFindBuffers,
+	"fn": ActionNewFile,
+	"bd": ActionCloseTab,
+}
+
+func leaderPrefix(seq string) bool {
+	for k := range leaderMap {
+		if len(k) > len(seq) && k[:len(seq)] == seq {
+			return true
+		}
+	}
+	return false
+}
 
 type Parser struct {
 	count1  int
@@ -24,6 +44,7 @@ type Parser struct {
 	waitFor MotionKind
 	waitAct Action
 	inner   bool
+	leader  string
 	keys    []string
 }
 
@@ -62,7 +83,11 @@ func (p *Parser) Feed(k input.Key) (Command, bool) {
 		return p.feedSpecial(k)
 	}
 	r := k.Rune
-	p.keys = append(p.keys, string(r))
+	if r == ' ' {
+		p.keys = append(p.keys, "␣")
+	} else {
+		p.keys = append(p.keys, string(r))
+	}
 
 	switch p.wait {
 	case waitChar:
@@ -78,6 +103,15 @@ func (p *Parser) Feed(k input.Key) (Command, bool) {
 			return p.finish(Command{Action: ActionNextTab})
 		case r == 'T' && p.op == OpNone:
 			return p.finish(Command{Action: ActionPrevTab})
+		}
+		return p.cancel()
+	case waitLeader:
+		p.leader += string(r)
+		if a, ok := leaderMap[p.leader]; ok {
+			return p.finish(Command{Action: a})
+		}
+		if leaderPrefix(p.leader) {
+			return Command{}, false
 		}
 		return p.cancel()
 	case waitObject:
@@ -112,6 +146,12 @@ func (p *Parser) Feed(k input.Key) (Command, bool) {
 	}
 
 	switch r {
+	case ' ':
+		if p.count1 == 0 {
+			p.wait = waitLeader
+			return Command{}, false
+		}
+		return p.cancel()
 	case 'd':
 		return p.startOperator(OpDelete, r)
 	case 'c':
@@ -224,7 +264,7 @@ func (p *Parser) motionForRune(r rune) (Motion, bool) {
 	switch r {
 	case 'h':
 		return Motion{Kind: MotionLeft}, true
-	case 'l', ' ':
+	case 'l':
 		return Motion{Kind: MotionRight}, true
 	case 'j':
 		return Motion{Kind: MotionDown}, true

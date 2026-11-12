@@ -11,6 +11,50 @@ import (
 )
 
 func (e *Editor) Frame() render.Frame {
+	fullWidth := e.width
+	panel := 0
+	if e.explorer.open && e.explorer.tree != nil {
+		panel = explorerWidth(fullWidth)
+		if panel == 0 && e.mode == ModeExplorer {
+			panel = fullWidth
+		}
+	}
+	e.width = fullWidth - panel
+	frame := e.editorFrame()
+	e.width = fullWidth
+
+	if panel > 0 {
+		side := e.explorerPanel(len(frame.Lines), panel)
+		for i := range frame.Lines {
+			if panel == fullWidth {
+				frame.Lines[i] = side[i]
+			} else {
+				frame.Lines[i] = append(append(render.StyledLine{}, side[i]...), frame.Lines[i]...)
+			}
+		}
+		if e.mode != ModeCommand && e.mode != ModeSearch && e.mode != ModePrompt {
+			frame.Cursor.Col += panel
+		}
+	}
+
+	if e.mode == ModeFinder && e.finder != nil {
+		box, row, col := e.finderBox(len(frame.Lines))
+		for i, b := range box {
+			if row+i < len(frame.Lines) {
+				frame.Lines[row+i] = overlay(frame.Lines[row+i], col, b, fullWidth)
+			}
+		}
+		frame.Cursor = render.ScreenPos{Row: row + 1, Col: min(col+4+len([]rune(sanitize(string(e.finder.query)))), fullWidth-1)}
+		frame.CursorShape = render.CursorBar
+	}
+	if e.mode == ModeExplorer {
+		frame.HideCursor = true
+	}
+	frame.Status = e.statusLine()
+	return frame
+}
+
+func (e *Editor) editorFrame() render.Frame {
 	total := e.buf.LineCount()
 	start, end := e.viewport.VisibleRange(total)
 	vpHeight := e.viewport.Height
@@ -65,7 +109,7 @@ func (e *Editor) Frame() render.Frame {
 	switch e.mode {
 	case ModeInsert:
 		frame.CursorShape = render.CursorBar
-	case ModeCommand, ModeSearch:
+	case ModeCommand, ModeSearch, ModePrompt:
 		cmd := e.promptLine()
 		frame.CursorShape = render.CursorBar
 		frame.Cursor = render.ScreenPos{
@@ -151,7 +195,7 @@ func sanitize(s string) string {
 }
 
 func (e *Editor) statusLine() render.StyledLine {
-	if e.mode == ModeCommand || e.mode == ModeSearch {
+	if e.mode == ModeCommand || e.mode == ModeSearch || e.mode == ModePrompt {
 		cmd := e.promptLine()
 		return render.StyledLine{{Text: view.FormatLine(cmd, e.width, view.DefaultTabStop)}}
 	}
