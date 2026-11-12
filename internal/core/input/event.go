@@ -13,6 +13,7 @@ type Mod uint8
 const (
 	ModCtrl Mod = 1 << iota
 	ModAlt
+	ModShift
 )
 
 type KeyCode uint8
@@ -91,6 +92,10 @@ func (k Key) String() string {
 	}
 	if k.Mod&ModAlt != 0 {
 		prefix += "M-"
+	}
+
+	if k.Mod & ModShift != 0 && k.Code != KeyRune {
+		prefix += "S-"
 	}
 
 	if prefix != "" || k.Code != KeyRune || k.Rune == ' ' {

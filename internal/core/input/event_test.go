@@ -63,6 +63,11 @@ func TestKeyString(t *testing.T) {
 			want: "<CR>",
 		},
 		{
+			name: "Shift+Tab",
+			key:  Key{Code: KeyTab, Mod: ModShift},
+			want: "<S-Tab>",
+		},
+		{
 			name: "Ctrl+a normalizado",
 			key:  Key{Rune: 'a', Mod: ModCtrl},
 			want: "<C-a>",
@@ -71,6 +76,11 @@ func TestKeyString(t *testing.T) {
 			name: "Alt+x",
 			key:  Key{Rune: 'x', Mod: ModAlt},
 			want: "<M-x>",
+		},
+		{
+			name: "Alt+Shift+a",
+			key:  Key{Rune: 'A', Mod: ModAlt},
+			want: "<M-A>",
 		},
 		{
 			name: "Ctrl+Alt+Up",

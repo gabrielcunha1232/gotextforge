@@ -29,6 +29,11 @@ func TestTranslateKey(t *testing.T) {
 			want: input.Key{Code: input.KeyRune, Rune: 'ç'},
 		},
 		{
+			name: "espaco",
+			msg:  tea.KeyPressMsg{Code: tea.KeySpace, Text: " "},
+			want: input.Key{Code: input.KeyRune, Rune: ' '},
+		},
+		{
 			name: "tecla Esc",
 			msg:  tea.KeyPressMsg{Code: tea.KeyEscape},
 			want: input.Key{Code: input.KeyEsc},
@@ -39,6 +44,11 @@ func TestTranslateKey(t *testing.T) {
 			want: input.Key{Code: input.KeyEnter},
 		},
 		{
+			name: "Shift+Tab",
+			msg:  tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift},
+			want: input.Key{Code: input.KeyTab, Mod: input.ModShift},
+		},
+		{
 			name: "Ctrl+a",
 			msg:  tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl},
 			want: input.Key{Code: input.KeyRune, Rune: 'a', Mod: input.ModCtrl},
@@ -47,6 +57,11 @@ func TestTranslateKey(t *testing.T) {
 			name: "Alt+x",
 			msg:  tea.KeyPressMsg{Code: 'x', Mod: tea.ModAlt},
 			want: input.Key{Code: input.KeyRune, Rune: 'x', Mod: input.ModAlt},
+		},
+		{
+			name: "Alt+Shift+a",
+			msg:  tea.KeyPressMsg{Code: 'a', Mod: tea.ModAlt | tea.ModShift},
+			want: input.Key{Code: input.KeyRune, Rune: 'A', Mod: input.ModAlt},
 		},
 		{
 			name: "Ctrl+Alt+Up",
