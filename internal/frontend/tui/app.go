@@ -8,7 +8,8 @@ import (
 )
 
 type model struct {
-	editor *editor.Editor
+	editor    *editor.Editor
+	listening bool
 }
 
 type asyncMsg struct {
@@ -30,13 +31,23 @@ func (m model) waitAsync() tea.Cmd {
 }
 
 func (m model) Init() tea.Cmd {
-	return m.waitAsync()
+	return nil
+}
+
+func (m model) listen() (model, tea.Cmd) {
+	if m.listening {
+		return m, nil
+	}
+	cmd := m.waitAsync()
+	m.listening = cmd != nil
+	return m, cmd
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case asyncMsg:
 		m.editor.HandleAsync(msg.event)
+		m.listening = true
 		return m, m.waitAsync()
 
 	case tea.WindowSizeMsg:
@@ -52,7 +63,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	return m, nil
+	return m.listen()
 }
 
 func (m model) View() tea.View {

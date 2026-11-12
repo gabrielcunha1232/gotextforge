@@ -71,8 +71,13 @@ func (p *Parser) Feed(k input.Key) (Command, bool) {
 		}
 		return p.finishMotion(Motion{Kind: p.waitFor, Char: r})
 	case waitG:
-		if r == 'g' {
+		switch {
+		case r == 'g':
 			return p.finishMotion(Motion{Kind: MotionFileStart})
+		case r == 't' && p.op == OpNone:
+			return p.finish(Command{Action: ActionNextTab})
+		case r == 'T' && p.op == OpNone:
+			return p.finish(Command{Action: ActionPrevTab})
 		}
 		return p.cancel()
 	case waitObject:
@@ -151,6 +156,22 @@ func (p *Parser) Feed(k input.Key) (Command, bool) {
 		return p.finish(Command{Action: ActionCommandLine})
 	case 'K':
 		return p.finish(Command{Action: ActionHover})
+	case '/':
+		return p.finish(Command{Action: ActionSearchForward})
+	case '?':
+		return p.finish(Command{Action: ActionSearchBackward})
+	case 'n':
+		return p.finish(Command{Action: ActionSearchNext})
+	case 'N':
+		return p.finish(Command{Action: ActionSearchPrev})
+	case '*':
+		return p.finish(Command{Action: ActionSearchWordForward})
+	case '#':
+		return p.finish(Command{Action: ActionSearchWordBackward})
+	case 'L':
+		return p.finish(Command{Action: ActionNextTab})
+	case 'H':
+		return p.finish(Command{Action: ActionPrevTab})
 	case 'r':
 		p.wait = waitChar
 		p.waitAct = ActionReplace

@@ -6,21 +6,21 @@ import (
 )
 
 type LanguageClient interface {
-	Open(text string, version int)
-	Change(text string, version int)
-	Save()
-	Hover(id int, line []rune, pos buffer.Pos)
-	Completion(id int, line []rune, pos buffer.Pos)
+	Open(path, text string, version int)
+	Change(path, text string, version int)
+	Save(path string)
+	CloseDocument(path string)
+	Hover(id int, path string, line []rune, pos buffer.Pos)
+	Completion(id int, path string, line []rune, pos buffer.Pos)
 	Events() <-chan lsp.Event
 	Close()
 }
 
 type lspState struct {
 	client   LanguageClient
+	starter  func(path string) LanguageClient
 	ready    bool
 	failed   bool
-	synced   int
-	diags    []lsp.Diagnostic
 	nextReq  int
 	hoverReq int
 	compReq  int
@@ -28,11 +28,30 @@ type lspState struct {
 
 func (e *Editor) SetLanguageClient(c LanguageClient) {
 	e.lsp = lspState{client: c}
-	if c == nil {
+	for _, d := range e.docs {
+		d.opened = false
+	}
+	e.ensureLanguageServer(e.document)
+}
+
+func (e *Editor) SetLanguageServer(start func(path string) LanguageClient) {
+	e.lsp.starter = start
+	e.ensureLanguageServer(e.document)
+}
+
+func (e *Editor) ensureLanguageServer(d *document) {
+	if !d.highlight || d.path == "" || d.opened {
 		return
 	}
-	e.lsp.synced = e.buf.Version()
-	c.Open(e.buf.PlainText(), e.lsp.synced)
+	if e.lsp.client == nil {
+		if e.lsp.starter == nil {
+			return
+		}
+		e.lsp.client = e.lsp.starter(d.path)
+	}
+	d.synced = d.buf.Version()
+	d.opened = true
+	e.lsp.client.Open(d.path, d.buf.PlainText(), d.synced)
 }
 
 func (e *Editor) Async() <-chan lsp.Event {
@@ -58,7 +77,11 @@ func (e *Editor) HandleAsync(ev any) {
 		}
 		e.lsp.ready = v.Ready
 	case lsp.DiagnosticsEvent:
-		e.lsp.diags = v.Items
+		for _, d := range e.docs {
+			if d.path != "" && lsp.SameURI(lsp.PathToURI(d.path), v.URI) {
+				d.diags = v.Items
+			}
+		}
 	case lsp.HoverEvent:
 		if v.ID != e.lsp.hoverReq || e.mode != ModeNormal {
 			return
@@ -80,32 +103,32 @@ func (e *Editor) HandleAsync(ev any) {
 }
 
 func (e *Editor) syncLanguageServer() {
-	if e.lsp.client == nil {
+	if e.lsp.client == nil || !e.opened {
 		return
 	}
-	if v := e.buf.Version(); v != e.lsp.synced {
-		e.lsp.synced = v
-		e.lsp.client.Change(e.buf.PlainText(), v)
+	if v := e.buf.Version(); v != e.synced {
+		e.synced = v
+		e.lsp.client.Change(e.path, e.buf.PlainText(), v)
 	}
 }
 
 func (e *Editor) requestHover() {
-	if e.lsp.client == nil {
+	if e.lsp.client == nil || !e.opened {
 		e.message = "sem servidor de linguagem (abra um arquivo .go com o gopls instalado)"
 		return
 	}
 	e.syncLanguageServer()
 	e.lsp.nextReq++
 	e.lsp.hoverReq = e.lsp.nextReq
-	e.lsp.client.Hover(e.lsp.hoverReq, e.buf.Line(e.cursor.Line), e.cursor)
+	e.lsp.client.Hover(e.lsp.hoverReq, e.path, e.buf.Line(e.cursor.Line), e.cursor)
 }
 
 func (e *Editor) requestCompletion() {
-	if e.lsp.client == nil || !e.lsp.ready {
+	if e.lsp.client == nil || !e.lsp.ready || !e.opened {
 		return
 	}
 	e.syncLanguageServer()
 	e.lsp.nextReq++
 	e.lsp.compReq = e.lsp.nextReq
-	e.lsp.client.Completion(e.lsp.compReq, e.buf.Line(e.cursor.Line), e.cursor)
+	e.lsp.client.Completion(e.lsp.compReq, e.path, e.buf.Line(e.cursor.Line), e.cursor)
 }

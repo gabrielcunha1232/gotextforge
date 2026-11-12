@@ -16,7 +16,7 @@ func TestSequenciasAleatoriasNaoQuebramOEditor(t *testing.T) {
 		"\t\t\n  \n\n",
 		"/* comentario\nque continua */\nvar q = `raw\nstring`\n",
 	}
-	runes := []rune("hjklwbeWBE0^$GgfFtT;{}()[]\"'`xXdDcCsSyYpPuJrioaAIO:qQ123 \tzZ.,")
+	runes := []rune("hjklwbeWBE0^$GgfFtT;{}()[]\"'`xXdDcCsSyYpPuJrioaAIO:qQ123 \tzZ.,/?nN*#HLe")
 	specials := []input.KeyCode{input.KeyEsc, input.KeyEnter, input.KeyBackspace, input.KeyDelete,
 		input.KeyUp, input.KeyDown, input.KeyLeft, input.KeyRight, input.KeyPageDown, input.KeyPageUp, input.KeyHome, input.KeyEnd}
 
@@ -26,6 +26,10 @@ func TestSequenciasAleatoriasNaoQuebramOEditor(t *testing.T) {
 		ed := editorFrom(t, src)
 		ed.path = "aleatorio.go"
 		ed.save = (&fakeSaver{}).save
+		ed.load = fakeFiles(map[string]string{"outro.go": src, "e": "x\n"})
+		if rng.IntN(2) == 0 {
+			ed.OpenFile("outro.go")
+		}
 		width, height := 5+rng.IntN(120), 2+rng.IntN(40)
 		ed.HandleEvent(input.NewResizeEvent(width, height))
 

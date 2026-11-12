@@ -51,7 +51,7 @@ func TestGoplsDeVerdade(t *testing.T) {
 
 	c := Start(path, GoplsStarter)
 	defer c.Close()
-	c.Open(broken, 1)
+	c.Open(path, broken, 1)
 	waitEventTimeout[StatusEvent](t, c, 60*time.Second, func(s StatusEvent) bool { return s.Ready })
 
 	diag := waitEventTimeout(t, c, 60*time.Second, func(d DiagnosticsEvent) bool { return len(d.Items) > 0 })
@@ -67,7 +67,7 @@ func TestGoplsDeVerdade(t *testing.T) {
 	}
 
 	line := []rune("\tfmt.Println(\"ação\")")
-	c.Hover(1, line, buffer.Pos{Line: 5, Col: 6})
+	c.Hover(1, path, line, buffer.Pos{Line: 5, Col: 6})
 	h := waitEventTimeout[HoverEvent](t, c, 30*time.Second, nil)
 	t.Logf("hover: %q", h.Text)
 	if h.Err != nil || !strings.Contains(h.Text, "Println") {
@@ -75,8 +75,8 @@ func TestGoplsDeVerdade(t *testing.T) {
 	}
 
 	const typing = "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Pr\n}\n"
-	c.Change(typing, 2)
-	c.Completion(2, []rune("\tfmt.Pr"), buffer.Pos{Line: 5, Col: 7})
+	c.Change(path, typing, 2)
+	c.Completion(2, path, []rune("\tfmt.Pr"), buffer.Pos{Line: 5, Col: 7})
 	comp := waitEventTimeout[CompletionEvent](t, c, 30*time.Second, nil)
 	labels := make([]string, 0, len(comp.Items))
 	for _, it := range comp.Items {
@@ -88,6 +88,6 @@ func TestGoplsDeVerdade(t *testing.T) {
 	}
 
 	const fixed = "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"ok\")\n}\n"
-	c.Change(fixed, 3)
+	c.Change(path, fixed, 3)
 	waitEventTimeout(t, c, 60*time.Second, func(d DiagnosticsEvent) bool { return d.Version == 3 && len(d.Items) == 0 })
 }

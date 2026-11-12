@@ -12,31 +12,35 @@ import (
 )
 
 type fakeClient struct {
-	opened   []string
-	changes  []string
-	versions []int
-	saves    int
-	hovers   []buffer.Pos
-	comps    []buffer.Pos
-	lastID   int
-	closed   bool
-	events   chan lsp.Event
+	paths      []string
+	closedDocs []string
+	opened     []string
+	changes    []string
+	versions   []int
+	saves      int
+	hovers     []buffer.Pos
+	comps      []buffer.Pos
+	lastID     int
+	closed     bool
+	events     chan lsp.Event
 }
 
-func (f *fakeClient) Open(text string, version int) {
+func (f *fakeClient) Open(path, text string, version int) {
+	f.paths = append(f.paths, path)
 	f.opened = append(f.opened, text)
 	f.versions = append(f.versions, version)
 }
-func (f *fakeClient) Change(text string, version int) {
+func (f *fakeClient) Change(path, text string, version int) {
 	f.changes = append(f.changes, text)
 	f.versions = append(f.versions, version)
 }
-func (f *fakeClient) Save() { f.saves++ }
-func (f *fakeClient) Hover(id int, _ []rune, p buffer.Pos) {
+func (f *fakeClient) Save(string)               { f.saves++ }
+func (f *fakeClient) CloseDocument(path string) { f.closedDocs = append(f.closedDocs, path) }
+func (f *fakeClient) Hover(id int, _ string, _ []rune, p buffer.Pos) {
 	f.lastID = id
 	f.hovers = append(f.hovers, p)
 }
-func (f *fakeClient) Completion(id int, _ []rune, p buffer.Pos) {
+func (f *fakeClient) Completion(id int, _ string, _ []rune, p buffer.Pos) {
 	f.lastID = id
 	f.comps = append(f.comps, p)
 }
@@ -89,7 +93,7 @@ func TestSincronizaTextoComOServidor(t *testing.T) {
 
 func TestDiagnosticosNaTela(t *testing.T) {
 	ed, _ := editorWithLSP(t, "package main\n\nvar x int = \"texto\"\nvar y = 1\n")
-	ed.HandleAsync(lsp.DiagnosticsEvent{Items: []lsp.Diagnostic{
+	ed.HandleAsync(lsp.DiagnosticsEvent{URI: lsp.PathToURI(ed.path), Items: []lsp.Diagnostic{
 		{Range: rng(2, 12, 2, 19), Severity: lsp.SeverityError, Message: "cannot use \"texto\" as int\nsegunda linha"},
 		{Range: rng(3, 4, 3, 5), Severity: lsp.SeverityWarning, Message: "y nao usado"},
 	}})
@@ -132,7 +136,7 @@ func TestDiagnosticosNaTela(t *testing.T) {
 
 func TestDiagnosticoComPosicaoUTF16(t *testing.T) {
 	ed, _ := editorWithLSP(t, "s := \"😀\" + x\n")
-	ed.HandleAsync(lsp.DiagnosticsEvent{Items: []lsp.Diagnostic{
+	ed.HandleAsync(lsp.DiagnosticsEvent{URI: lsp.PathToURI(ed.path), Items: []lsp.Diagnostic{
 		{Range: rng(0, 12, 0, 13), Severity: lsp.SeverityError, Message: "x indefinido"},
 	}})
 	var under string
@@ -148,7 +152,7 @@ func TestDiagnosticoComPosicaoUTF16(t *testing.T) {
 
 func TestDiagnosticoForaDoArquivoNaoQuebra(t *testing.T) {
 	ed, _ := editorWithLSP(t, "a\n")
-	ed.HandleAsync(lsp.DiagnosticsEvent{Items: []lsp.Diagnostic{
+	ed.HandleAsync(lsp.DiagnosticsEvent{URI: lsp.PathToURI(ed.path), Items: []lsp.Diagnostic{
 		{Range: rng(50, 0, 60, 3), Severity: lsp.SeverityError, Message: "velho"},
 		{Range: rng(0, 40, 0, 99), Severity: lsp.SeverityHint, Message: "alem do fim"},
 	}})
@@ -312,6 +316,8 @@ func TestCompletionManualComCtrlEspaco(t *testing.T) {
 
 func TestStatusDoServidor(t *testing.T) {
 	ed := editorFrom(t, "a\n")
+	ed.path = "x.go"
+	ed.highlight = true
 	fc := &fakeClient{events: make(chan lsp.Event, 1)}
 	ed.SetLanguageClient(fc)
 	if !strings.Contains(ed.Frame().Status.Text(), "gopls…") {

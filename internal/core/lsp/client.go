@@ -22,6 +22,7 @@ type StatusEvent struct {
 }
 
 type DiagnosticsEvent struct {
+	URI     string
 	Version int
 	Items   []Diagnostic
 }
@@ -52,8 +53,13 @@ type Transport struct {
 
 type Starter func(root string) (Transport, error)
 
+type pendingChange struct {
+	text    string
+	version int
+	queued  bool
+}
+
 type Client struct {
-	uri    string
 	root   string
 	events chan Event
 	done   chan struct{}
@@ -63,10 +69,8 @@ type Client struct {
 	mu             sync.Mutex
 	ops            []func(*Conn)
 	signal         chan struct{}
-	pendingText    string
-	pendingVer     int
-	changeQueued   bool
-	lastSentVer    int
+	pending        map[string]*pendingChange
+	lastSent       map[string]int
 	requestTimeout time.Duration
 }
 
@@ -120,8 +124,9 @@ func FindRoot(path string) string {
 func Start(path string, starter Starter) *Client {
 	root := FindRoot(path)
 	c := &Client{
-		uri:            PathToURI(path),
 		root:           root,
+		pending:        map[string]*pendingChange{},
+		lastSent:       map[string]int{},
 		events:         make(chan Event, 64),
 		done:           make(chan struct{}),
 		ended:          make(chan struct{}),
@@ -136,55 +141,73 @@ func (c *Client) Events() <-chan Event {
 	return c.events
 }
 
-func (c *Client) Open(text string, version int) {
+func (c *Client) Open(path, text string, version int) {
+	uri := PathToURI(path)
 	c.enqueue(func(conn *Conn) {
 		_ = conn.Notify("textDocument/didOpen", map[string]any{
 			"textDocument": map[string]any{
-				"uri":        c.uri,
+				"uri":        uri,
 				"languageId": "go",
 				"version":    version,
 				"text":       text,
 			},
 		})
-		c.lastSentVer = version
+		c.lastSent[uri] = version
 	})
 }
 
-func (c *Client) Change(text string, version int) {
+func (c *Client) Change(path, text string, version int) {
+	uri := PathToURI(path)
 	c.mu.Lock()
-	c.pendingText, c.pendingVer = text, version
-	queued := c.changeQueued
-	c.changeQueued = true
+	p := c.pending[uri]
+	if p == nil {
+		p = &pendingChange{}
+		c.pending[uri] = p
+	}
+	p.text, p.version = text, version
+	queued := p.queued
+	p.queued = true
 	c.mu.Unlock()
 	if queued {
 		return
 	}
 	c.enqueue(func(conn *Conn) {
 		c.mu.Lock()
-		text, version := c.pendingText, c.pendingVer
-		c.changeQueued = false
+		text, version := p.text, p.version
+		p.queued = false
 		c.mu.Unlock()
-		if version <= c.lastSentVer {
+		if version <= c.lastSent[uri] {
 			return
 		}
 		_ = conn.Notify("textDocument/didChange", map[string]any{
-			"textDocument":   map[string]any{"uri": c.uri, "version": version},
+			"textDocument":   map[string]any{"uri": uri, "version": version},
 			"contentChanges": []map[string]any{{"text": text}},
 		})
-		c.lastSentVer = version
+		c.lastSent[uri] = version
 	})
 }
 
-func (c *Client) Save() {
+func (c *Client) Save(path string) {
+	uri := PathToURI(path)
 	c.enqueue(func(conn *Conn) {
 		_ = conn.Notify("textDocument/didSave", map[string]any{
-			"textDocument": map[string]any{"uri": c.uri},
+			"textDocument": map[string]any{"uri": uri},
 		})
 	})
 }
 
-func (c *Client) Hover(id int, line []rune, pos buffer.Pos) {
-	params := c.positionParams(line, pos)
+func (c *Client) CloseDocument(path string) {
+	uri := PathToURI(path)
+	c.enqueue(func(conn *Conn) {
+		_ = conn.Notify("textDocument/didClose", map[string]any{
+			"textDocument": map[string]any{"uri": uri},
+		})
+		delete(c.lastSent, uri)
+	})
+}
+
+func (c *Client) Hover(id int, path string, line []rune, pos buffer.Pos) {
+	params := positionParams(path, line, pos)
 	c.enqueue(func(conn *Conn) {
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), c.requestTimeout)
@@ -200,8 +223,8 @@ func (c *Client) Hover(id int, line []rune, pos buffer.Pos) {
 	})
 }
 
-func (c *Client) Completion(id int, line []rune, pos buffer.Pos) {
-	params := c.positionParams(line, pos)
+func (c *Client) Completion(id int, path string, line []rune, pos buffer.Pos) {
+	params := positionParams(path, line, pos)
 	c.enqueue(func(conn *Conn) {
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), c.requestTimeout)
@@ -213,9 +236,9 @@ func (c *Client) Completion(id int, line []rune, pos buffer.Pos) {
 	})
 }
 
-func (c *Client) positionParams(line []rune, pos buffer.Pos) map[string]any {
+func positionParams(path string, line []rune, pos buffer.Pos) map[string]any {
 	return map[string]any{
-		"textDocument": map[string]any{"uri": c.uri},
+		"textDocument": map[string]any{"uri": PathToURI(path)},
 		"position":     ToPosition(line, pos),
 	}
 }
@@ -328,10 +351,10 @@ func (c *Client) onNotification(method string, params json.RawMessage) {
 		Version     int          `json:"version"`
 		Diagnostics []Diagnostic `json:"diagnostics"`
 	}
-	if json.Unmarshal(params, &p) != nil || !SameURI(p.URI, c.uri) {
+	if json.Unmarshal(params, &p) != nil {
 		return
 	}
-	c.emit(DiagnosticsEvent{Version: p.Version, Items: p.Diagnostics})
+	c.emit(DiagnosticsEvent{URI: p.URI, Version: p.Version, Items: p.Diagnostics})
 }
 
 func onServerRequest(method string, params json.RawMessage) (any, error) {

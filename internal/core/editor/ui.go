@@ -50,6 +50,11 @@ func (e *Editor) Frame() render.Frame {
 		e.placeBox(lines, e.completionBox(), cursor.Row, max(anchor-7, 0))
 	}
 
+	if tabs := e.tabline(); tabs != nil {
+		lines = append([]render.StyledLine{tabs}, lines...)
+		cursor.Row++
+	}
+
 	frame := render.Frame{
 		Lines:       lines,
 		Cursor:      cursor,
@@ -60,11 +65,11 @@ func (e *Editor) Frame() render.Frame {
 	switch e.mode {
 	case ModeInsert:
 		frame.CursorShape = render.CursorBar
-	case ModeCommand:
-		cmd := append([]rune{':'}, e.cmdline...)
+	case ModeCommand, ModeSearch:
+		cmd := e.promptLine()
 		frame.CursorShape = render.CursorBar
 		frame.Cursor = render.ScreenPos{
-			Row: vpHeight,
+			Row: len(lines),
 			Col: min(view.ScreenCol(cmd, len(cmd), view.DefaultTabStop), max(e.width-1, 0)),
 		}
 	}
@@ -114,6 +119,7 @@ func (e *Editor) renderBufferLine(i, width int, current bool, diags []lineDiag) 
 			}
 		}
 	}
+	e.applySearchHighlight(i, runes, styles)
 	applyDiagnostics(styles, diags)
 
 	line := view.RenderLine(runes, func(j int) render.Style { return styles[j] }, width, view.DefaultTabStop)
@@ -145,8 +151,8 @@ func sanitize(s string) string {
 }
 
 func (e *Editor) statusLine() render.StyledLine {
-	if e.mode == ModeCommand {
-		cmd := append([]rune{':'}, e.cmdline...)
+	if e.mode == ModeCommand || e.mode == ModeSearch {
+		cmd := e.promptLine()
 		return render.StyledLine{{Text: view.FormatLine(cmd, e.width, view.DefaultTabStop)}}
 	}
 

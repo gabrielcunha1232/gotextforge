@@ -82,6 +82,14 @@ const (
 	ActionCommandLine
 	ActionQuit
 	ActionHover
+	ActionSearchForward
+	ActionSearchBackward
+	ActionSearchNext
+	ActionSearchPrev
+	ActionSearchWordForward
+	ActionSearchWordBackward
+	ActionNextTab
+	ActionPrevTab
 )
 
 type Command struct {

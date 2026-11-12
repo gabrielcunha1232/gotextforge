@@ -25,7 +25,7 @@ var introHints = [][2]string{
 }
 
 func (e *Editor) showIntro() bool {
-	return e.path == "" && e.mode != ModeInsert && !e.buf.Modified() &&
+	return len(e.docs) == 1 && e.path == "" && e.mode != ModeInsert && !e.buf.Modified() &&
 		e.buf.LineCount() == 1 && e.buf.LineLen(0) == 0
 }
 

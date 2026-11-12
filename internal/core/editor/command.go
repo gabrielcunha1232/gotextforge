@@ -19,6 +19,11 @@ func (e *Editor) handleCommandKey(k input.Key) {
 	case k.Code == input.KeyEsc || isCtrl(k, 'c'):
 		e.mode = ModeNormal
 	case k.Code == input.KeyEnter:
+		if e.mode == ModeSearch {
+			e.mode = ModeNormal
+			e.executeSearch(string(e.cmdline))
+			return
+		}
 		cmd := strings.TrimSpace(string(e.cmdline))
 		e.mode = ModeNormal
 		e.execute(cmd)
@@ -34,33 +39,58 @@ func (e *Editor) handleCommandKey(k input.Key) {
 }
 
 func (e *Editor) execute(cmd string) {
-	switch cmd {
+	name, arg, _ := strings.Cut(cmd, " ")
+	arg = strings.TrimSpace(arg)
+
+	switch name {
 	case "":
-	case "w":
+	case "noh", "nohlsearch":
+		e.search.highlight = false
+	case "e", "edit", "tabe", "tabedit", "tabnew":
+		if arg == "" {
+			e.message = "E32: informe o arquivo (:e caminho)"
+			return
+		}
+		e.OpenFile(arg)
+	case "w", "write":
+		if arg != "" {
+			e.message = "E492: :w com outro nome ainda não é suportado"
+			return
+		}
 		e.write()
-	case "q":
-		e.requestQuit()
-	case "q!":
-		e.quit = true
-	case "wq":
+	case "wa", "wall":
+		e.writeAll()
+	case "q", "quit", "bd", "bdelete", "tabc", "tabclose":
+		e.closeCurrent(false)
+	case "q!", "quit!", "bd!", "bdelete!":
+		e.closeCurrent(true)
+	case "qa", "qall", "quitall":
+		e.quitAll(false)
+	case "qa!", "qall!", "quitall!":
+		e.quitAll(true)
+	case "wq", "x", "xit":
+		if (name == "x" || name == "xit") && !e.buf.Modified() {
+			e.closeCurrent(false)
+			return
+		}
 		if e.write() {
+			e.closeCurrent(false)
+		}
+	case "wqa", "wqall", "xa", "xall":
+		if e.writeAll() {
 			e.quit = true
 		}
-	case "x":
-		if !e.buf.Modified() || e.write() {
-			e.quit = true
-		}
+	case "bn", "bnext", "tabn", "tabnext":
+		e.cycleTab(1)
+	case "bp", "bprev", "bprevious", "tabp", "tabprev", "tabprevious":
+		e.cycleTab(-1)
 	default:
 		e.message = "E492: comando desconhecido: " + cmd
 	}
 }
 
 func (e *Editor) requestQuit() {
-	if e.buf.Modified() {
-		e.message = msgUnsaved
-		return
-	}
-	e.quit = true
+	e.quitAll(false)
 }
 
 func (e *Editor) write() bool {
@@ -77,8 +107,8 @@ func (e *Editor) write() bool {
 		return false
 	}
 	e.buf.MarkSaved()
-	if e.lsp.client != nil {
-		e.lsp.client.Save()
+	if e.lsp.client != nil && e.opened {
+		e.lsp.client.Save(e.path)
 	}
 	e.message = fmt.Sprintf("%q %dL gravado", e.filename, e.buf.LineCount())
 	return true

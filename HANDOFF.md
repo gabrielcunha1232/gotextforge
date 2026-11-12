@@ -4,7 +4,7 @@
 
 ## Estado atual (atualizado em 2026-11-12)
 
-**MS0 a MS5 concluídos, mais um visual estilo LazyVim.** O editor abre um arquivo pela linha de comando, ou sem argumento mostra uma tela inicial com logo, no terminal (Bubble Tea v2). Recursos atuais:
+**Fase 1 (terminal) concluída: MS0 a MS6.** O editor abre um ou vários arquivos pela linha de comando (cada um vira uma aba), ou sem argumento mostra uma tela inicial com logo, no terminal (Bubble Tea v2). Recursos atuais:
 - **Vim (MS4, engine em `internal/core/engine`):**
   - counts: `3j`, `2d3w`;
   - motions: `h j k l w W b B e E 0 ^ $ gg G f F t T { }`, setas, PgUp/PgDn;
@@ -18,18 +18,20 @@
   - `K` abre o hover numa janela flutuante, com o código colorido e o markdown limpo;
   - o completion abre um menu automático ao digitar (no início de uma palavra ou depois de `.`), com Ctrl+n/Ctrl+p ou setas para navegar, Enter/Tab/Ctrl+y para aceitar, Ctrl+e para fechar e Ctrl+Espaço para pedir manualmente;
   - o indicador `gopls…` / `gopls` / `gopls!` na status line mostra o estado do servidor.
+- **Busca (MS6):** `/` e `?` destacam as ocorrências enquanto você digita; `n N`, `* #` (palavra inteira), smart-case, volta ao início com aviso, `:noh`.
+- **Abas (MS6):** `:e arquivo` (cria se não existir), `H`/`L` e `gt`/`gT` trocam de aba, linha de abas no topo (bufferline) com `●` nas modificadas, `:q` fecha a aba (sai na última), `:qa[!]`, `:wa`, `:wqa`, `:bn`/`:bp`. Um gopls só para todos os arquivos, e cada diagnóstico vai para a aba dele.
 - **Visual:** paleta truecolor inspirada no Tokyo Night (assume terminal escuro); números de linha relativos, com o da linha atual em laranja; destaque da linha do cursor; status line estilo lualine (modo colorido, arquivo `[+]`, comando pendente, `go`, progresso, linha:coluna); erros em vermelho; tela inicial com logo em degradê.
 
 O critério do MS2 foi verificado de ponta a ponta: o editor modifica o `main.go` de um módulo real, salva com `:wq`, e o `go build` e o binário rodam.
 
 Arquivos `.go` têm syntax highlight (MS3): palavras-chave, strings, números, comentários, identificadores predeclarados e nomes de função, com comentários de bloco e raw strings que atravessam linhas tratados corretamente.
 
-**Próximo:** MS6, polimento (busca `/`, abas ou buffers, tema configurável) — "algo de postar no r/golang".
+**Próximo:** Fase 2, o desktop. O MS7 é um spike descartável: um `<canvas>` no Wails v3 desenhando o mesmo `render.Frame`, com o critério "digitar sem lag num arquivo de 5 mil linhas". Antes disso, pode valer fechar as pendências da fase 1 listadas em "Próximos passos".
 
 ### Estrutura real (difere do ROADMAP, que ainda mostra `core/` na raiz)
 
 ```
-cmd/gotextforge/main.go     [arquivo] → buffer.Load → editor.New → tui.Run; sem argumento abre a tela inicial; erros saem antes do TUI
+cmd/gotextforge/main.go     editor.New(nil,"") + SetLanguageServer(starter do gopls) + OpenFile(cada argumento) → tui.Run → ed.Close()
 internal/core/input/        Event{Kind, Key, Width, Height}, Key{Code, Rune, Mod} (comparável, vira chave de map)
 internal/core/render/       Frame{Lines, Cursor ScreenPos, CursorShape, Status StyledLine}, StyledLine = []Span (Text(), Width()), Style, Color{Kind ANSI|RGB}
 internal/core/buffer/       [][]rune somente leitura; Load(io.Reader); LineEnding (LF/CRLF); HasBOM; ErrUTF16
@@ -41,7 +43,8 @@ internal/core/lsp/          cliente LSP próprio (D5): jsonrpc.go (Content-Lengt
                             agrupa mudanças de texto, eventos num canal, shutdown/exit/kill)
 internal/core/engine/       vim: Parser (gramática + estado pending, Pending() = showcmd), ApplyMotion, TextObject, ChangeWordTarget
 internal/core/editor/       editor.go (estado/eventos), normal.go (executa comandos da engine, registrador, p/J/r),
-                            insert.go, command.go (:w :q...), ui.go (Frame: gutter, cursorline, statusline), intro.go, theme.go,
+                            insert.go, command.go (:e :w :q :qa :wa :bn...), ui.go (Frame: abas, gutter, cursorline, statusline), intro.go, theme.go,
+                            tabs.go (document por aba, OpenFile, layout, tabline), search.go (/ ? n N * #, destaque),
                             lsp.go (LanguageClient, HandleAsync), diagnostics.go, popup.go (hover/janelas), completion.go
 internal/frontend/tui/      TranslateKey (tea → input.Key), RenderFrame (Frame → string com SGR ANSI direto), model
 ```
@@ -110,7 +113,9 @@ O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda
    - O que ficou fora do MS4 (bom para depois): `.` (repetir), `;`/`,`, modo visual, registradores nomeados (`"a`), marcas, `%`, `ge`, autoindent, count no `i`.
    - ~~Milestone 5~~ ✅. O critério ("erros do compilador em tempo real enquanto digita") está verificado com o gopls real em `editor/gopls_integration_test.go`.
    - O que ficou fora do MS5: `gd` (ir para a definição), renomear, formatar ao salvar, sync incremental (hoje o texto inteiro vai a cada mudança, o que é ok até alguns milhares de linhas) e snippets.
-   - **Próximo é o MS6, o polimento.**
+   - ~~Milestone 6~~ ✅: busca, abas, status line e um README pronto para mostrar.
+   - **Pendências da fase 1 (boas para o humano):** autoindent no Enter e no `o`; `:w outro.go`; `.` para repetir; modo visual; `gd` (ir para a definição); tema claro ou configurável; wcwidth para CJK/emoji (hoje 1 rune = 1 célula); `;`/`,` depois de `f`/`t`.
+   - **Próximo é a fase 2 (MS7), o spike do canvas no Wails.**
 4. Seguir a tabela de milestones do ROADMAP.md; cada sessão começar pedindo objetivo + critério de aceite.
 5. Pendente (do humano): atualizar a árvore do `ROADMAP.md` para `internal/`.
 
@@ -137,5 +142,8 @@ O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda
 - **Encerramento do gopls:** `ed.Close()` no fim do `main` manda `shutdown` e `exit`, e mata o processo depois de 2 s se ele não sair. Conferido no Gerenciador de Tarefas: nenhum gopls órfão sobra dos testes (os processos `gopls` que aparecem rodando são do VS Code).
 - **Testes com gopls real** (`lsp/gopls_integration_test.go` e `editor/gopls_integration_test.go`): são pulados com `go test -short ./...` ou sem gopls no PATH. Levam cerca de 2 s.
 - **O renderer emite SGR `4:3` (undercurl) e `58;2;r;g;b` (cor do sublinhado)**: o terminal do VS Code e o Windows Terminal suportam; terminais antigos caem para sublinhado simples ou ignoram.
+- **Vários documentos (MS6):** o `Editor` embute `*document` (buffer, caminho, cursor, viewport, cache de syntax, diagnósticos e versão sincronizada). Trocar de aba é só `e.document = e.docs[i]`, então todo o código antigo que usa `e.buf`/`e.cursor` continua valendo para a aba atual. O `layout()` redimensiona os viewports quando a linha de abas aparece ou some.
+- **O cliente LSP recebe o caminho em cada chamada** (`Open/Change/Save/CloseDocument/Hover/Completion(path, ...)`), e o `DiagnosticsEvent` traz a `URI`. O gopls só inicia quando o primeiro `.go` abre (pelo `SetLanguageServer(starter)`), e o TUI começa a escutar os eventos quando o canal aparece (`model.listen`).
+- **Carregamento injetável:** `editor.load` (os testes usam `fakeFiles`), com o mesmo padrão do `save`.
 - **Sair é decisão do core**: `editor.ShouldQuit()`. O TUI só obedece; ele não trata mais o Ctrl+c.
 - **Undo mora no buffer** (`history.go`): cada `Insert`/`Delete` é registrado. O editor agrupa as mudanças com `BeginChange`/`EndChange`: um comando do modo normal é um passo, e uma sessão inteira de insert (do `i` ao Esc) também é um passo. O undo devolve o cursor para onde ele estava **antes** do comando. O `Modified()` compara o id do topo da pilha com o id salvo, então desfazer até o estado salvo tira o `[+]`.

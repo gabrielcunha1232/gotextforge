@@ -28,11 +28,11 @@ type lineDiag struct {
 }
 
 func (e *Editor) diagnosticsByLine(first, last int) map[int][]lineDiag {
-	if len(e.lsp.diags) == 0 {
+	if len(e.diags) == 0 {
 		return nil
 	}
 	out := map[int][]lineDiag{}
-	for _, d := range e.lsp.diags {
+	for _, d := range e.diags {
 		sl, el := d.Range.Start.Line, d.Range.End.Line
 		if el < first || sl > last || sl >= e.buf.LineCount() {
 			continue
@@ -95,7 +95,7 @@ func virtualText(diags []lineDiag) (string, lsp.Severity) {
 }
 
 func (e *Editor) diagnosticCounts() (errors, warnings int) {
-	for _, d := range e.lsp.diags {
+	for _, d := range e.diags {
 		switch d.Severity {
 		case lsp.SeverityError:
 			errors++

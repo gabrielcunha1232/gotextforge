@@ -8,6 +8,7 @@ import (
 	"github.com/gabrielcunha1232/gotextforge/internal/core/buffer"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/engine"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/input"
+	"github.com/gabrielcunha1232/gotextforge/internal/core/lsp"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/storage"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/syntax"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/view"
@@ -19,34 +20,28 @@ const (
 	ModeNormal Mode = iota
 	ModeInsert
 	ModeCommand
+	ModeSearch
 )
 
 type SaveFunc func(path string, src io.WriterTo) error
 
-type Editor struct {
+type LoadFunc func(path string) (*buffer.Buffer, error)
+
+type document struct {
 	buf       *buffer.Buffer
+	path      string
+	filename  string
+	highlight bool
+	syntax    syntax.Cache
 	viewport  view.Viewport
 	cursor    buffer.Pos
 	wantCol   int
-	mode      Mode
-	path      string
-	filename  string
-	save      SaveFunc
-	cmdline   []rune
-	message   string
-	quit      bool
-	highlight bool
-	syntax    syntax.Cache
-	parser    engine.Parser
-	reg       register
-	lsp       lspState
-	hover     *hoverPopup
-	comp      *completion
-	width     int
-	height    int
+	diags     []lsp.Diagnostic
+	synced    int
+	opened    bool
 }
 
-func New(buf *buffer.Buffer, path string) *Editor {
+func newDocument(buf *buffer.Buffer, path string) *document {
 	if buf == nil {
 		buf = buffer.New()
 	}
@@ -54,20 +49,46 @@ func New(buf *buffer.Buffer, path string) *Editor {
 	if path != "" {
 		filename = filepath.Base(path)
 	}
-
-	const defaultWidth = 80
-	const defaultHeight = 24
-
-	return &Editor{
+	return &document{
 		buf:       buf,
-		viewport:  view.NewViewport(defaultHeight - 1),
 		path:      path,
 		filename:  filename,
-		save:      storage.Save,
 		highlight: strings.HasSuffix(path, ".go"),
-		width:     defaultWidth,
-		height:    defaultHeight,
+		viewport:  view.NewViewport(1),
 	}
+}
+
+type Editor struct {
+	*document
+	docs    []*document
+	mode    Mode
+	save    SaveFunc
+	load    LoadFunc
+	cmdline []rune
+	message string
+	quit    bool
+	parser  engine.Parser
+	reg     register
+	lsp     lspState
+	hover   *hoverPopup
+	comp    *completion
+	search  searchState
+	width   int
+	height  int
+}
+
+func New(buf *buffer.Buffer, path string) *Editor {
+	doc := newDocument(buf, path)
+	e := &Editor{
+		document: doc,
+		docs:     []*document{doc},
+		save:     storage.Save,
+		load:     loadFile,
+		width:    80,
+		height:   24,
+	}
+	e.layout()
+	return e
 }
 
 func (e *Editor) ShouldQuit() bool {
@@ -87,11 +108,7 @@ func (e *Editor) HandleEvent(ev input.Event) {
 	case input.EventResize:
 		e.width = ev.Width
 		e.height = ev.Height
-		vpHeight := e.height - 1
-		if vpHeight < 1 {
-			vpHeight = 1
-		}
-		e.viewport.Resize(vpHeight, e.buf.LineCount())
+		e.layout()
 
 	case input.EventKey:
 		e.message = ""
@@ -107,7 +124,7 @@ func (e *Editor) HandleEvent(ev input.Event) {
 			if e.mode == ModeInsert {
 				e.afterInsertKey(ev.Key)
 			}
-		case ModeCommand:
+		case ModeCommand, ModeSearch:
 			e.handleCommandKey(ev.Key)
 		default:
 			e.buf.BeginChange(e.cursor)

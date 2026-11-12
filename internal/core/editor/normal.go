@@ -243,6 +243,16 @@ func (e *Editor) runAction(cmd engine.Command) {
 		e.requestQuit()
 	case engine.ActionHover:
 		e.requestHover()
+	case engine.ActionSearchForward, engine.ActionSearchBackward:
+		e.enterSearch(cmd.Action == engine.ActionSearchForward)
+	case engine.ActionSearchNext, engine.ActionSearchPrev:
+		e.repeatSearch(cmd.Action == engine.ActionSearchNext, cmd.Times())
+	case engine.ActionNextTab:
+		e.cycleTab(cmd.Times())
+	case engine.ActionPrevTab:
+		e.cycleTab(-cmd.Times())
+	case engine.ActionSearchWordForward, engine.ActionSearchWordBackward:
+		e.searchWord(cmd.Action == engine.ActionSearchWordForward, cmd.Times())
 	}
 }
 

@@ -210,22 +210,22 @@ func waitEvent[T Event](t *testing.T, c *Client) T {
 func TestClientComServidorFalso(t *testing.T) {
 	c, srv := startFake(t)
 
-	c.Open("package main\n", 1)
+	c.Open("main.go", "package main\n", 1)
 	if st := waitEvent[StatusEvent](t, c); !st.Ready || st.Err != nil {
 		t.Fatalf("status inicial = %+v", st)
 	}
 
-	c.Change("versao 2", 2)
-	c.Change("versao 3", 3)
-	c.Change("versao 4", 4)
+	c.Change("main.go", "versao 2", 2)
+	c.Change("main.go", "versao 3", 3)
+	c.Change("main.go", "versao 4", 4)
 
-	c.Hover(7, []rune("fmt.Println()"), buffer.Pos{Col: 5})
+	c.Hover(7, "main.go", []rune("fmt.Println()"), buffer.Pos{Col: 5})
 	h := waitEvent[HoverEvent](t, c)
 	if h.ID != 7 || !strings.Contains(h.Text, "func Println()") || h.Err != nil {
 		t.Errorf("hover = %+v", h)
 	}
 
-	c.Completion(8, []rune("fmt.Pr"), buffer.Pos{Col: 6})
+	c.Completion(8, "main.go", []rune("fmt.Pr"), buffer.Pos{Col: 6})
 	comp := waitEvent[CompletionEvent](t, c)
 	if comp.ID != 8 || len(comp.Items) != 2 || comp.Items[0].Label != "Println" {
 		t.Errorf("completion = %+v", comp)
@@ -245,6 +245,9 @@ func TestClientComServidorFalso(t *testing.T) {
 		"diagnostics": []any{},
 	})
 	d := waitEvent[DiagnosticsEvent](t, c)
+	if !SameURI(d.URI, PathToURI("main.go")) {
+		t.Errorf("diagnostico deveria vir marcado com o arquivo: %q", d.URI)
+	}
 	if len(d.Items) != 1 || d.Items[0].Message != "erro de teste" || d.Items[0].Severity != SeverityError {
 		t.Errorf("diagnosticos = %+v", d)
 	}
@@ -282,8 +285,8 @@ func TestClientSemGopls(t *testing.T) {
 	if !errors.Is(st.Err, ErrGoplsNotFound) {
 		t.Errorf("status = %+v", st)
 	}
-	c.Change("x", 2)
-	c.Hover(1, nil, buffer.Pos{})
+	c.Change("main.go", "x", 2)
+	c.Hover(1, "main.go", nil, buffer.Pos{})
 }
 
 func TestConnServidorMorre(t *testing.T) {

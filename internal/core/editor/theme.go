@@ -46,6 +46,8 @@ var (
 	styleStatusError   = render.Style{Fg: colRed, Bg: colBgStatus, Bold: true}
 	styleStatusPending = render.Style{Fg: colOrange, Bg: colBgStatus, Bold: true}
 	styleIntroSub      = render.Style{Fg: colComment, Italic: true}
+	styleSearch        = render.Style{Fg: colFg, Bg: render.RGB(0x3d, 0x59, 0xa1)}
+	styleSearchCurrent = render.Style{Fg: colBlack, Bg: colOrange, Bold: true}
 	styleIntroKey      = render.Style{Fg: colBlue, Bold: true}
 	styleIntroDesc     = render.Style{Fg: colFgDark}
 )
@@ -54,12 +56,14 @@ var modeColors = map[Mode]render.Color{
 	ModeNormal:  colBlue,
 	ModeInsert:  colGreen,
 	ModeCommand: colYellow,
+	ModeSearch:  colYellow,
 }
 
 var modeNames = map[Mode]string{
 	ModeNormal:  "NORMAL",
 	ModeInsert:  "INSERT",
 	ModeCommand: "COMMAND",
+	ModeSearch:  "SEARCH",
 }
 
 func withBg(s render.Style, bg render.Color) render.Style {
