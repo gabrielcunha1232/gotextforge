@@ -43,12 +43,12 @@ func TestRenderFrame(t *testing.T) {
 			{},
 			{{Text: "~", Style: render.Style{Fg: render.ColorBrightBlack}}},
 		},
-		Status: " main.go",
+		Status: render.StyledLine{{Text: " main.go"}},
 	}
 	want := "\x1b[35mfunc\x1b[0m main\n" +
 		"\n" +
 		"\x1b[90m~\x1b[0m\n" +
-		"\x1b[7m main.go\x1b[0m"
+		" main.go"
 
 	if got := RenderFrame(frame); got != want {
 		t.Errorf("RenderFrame =\n%q\nesperava\n%q", got, want)

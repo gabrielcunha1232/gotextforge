@@ -20,9 +20,9 @@ func RenderFrame(frame render.Frame) string {
 		b.WriteByte('\n')
 	}
 
-	b.WriteString("\x1b[7m")
-	b.WriteString(frame.Status)
-	b.WriteString(sgrReset)
+	for _, span := range frame.Status {
+		writeSpan(&b, span.Text, span.Style)
+	}
 
 	return b.String()
 }

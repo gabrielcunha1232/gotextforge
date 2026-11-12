@@ -11,8 +11,15 @@ import (
 )
 
 func frameLineText(line render.StyledLine) string {
+	spans := line
+	if len(spans) > 0 && (spans[0].Style == styleLineNr || spans[0].Style == styleCursorLineNr) {
+		spans = spans[1:]
+	}
+	if n := len(spans); n > 0 && spans[n-1].Style == (render.Style{Bg: colBgHighlight}) && strings.TrimSpace(spans[n-1].Text) == "" {
+		spans = spans[:n-1]
+	}
 	var b strings.Builder
-	for _, span := range line {
+	for _, span := range spans {
 		b.WriteString(span.Text)
 	}
 	return b.String()
@@ -60,8 +67,8 @@ func TestEditorViewportAndScroll(t *testing.T) {
 		if got := frameLineText(frame.Lines[0]); got != "linha 1" {
 			t.Errorf("primeira linha apos 'j' = %q, esperava %q", got, "linha 1")
 		}
-		if frame.Cursor != (render.ScreenPos{Row: 1, Col: 0}) {
-			t.Errorf("Cursor = %+v, esperava {Row:1 Col:0}", frame.Cursor)
+		if frame.Cursor != (render.ScreenPos{Row: 1, Col: ed.gutterWidth()}) {
+			t.Errorf("Cursor = %+v, esperava {Row:1 Col:%d}", frame.Cursor, ed.gutterWidth())
 		}
 	})
 
@@ -223,10 +230,24 @@ func TestCursorMovement(t *testing.T) {
 					press(ed, 'l')
 				}
 				press(ed, 'j')
+				press(ed, 'j')
+				press(ed, 'h')
+				press(ed, 'k')
+				press(ed, 'j')
+			},
+			want: buffer.Pos{Line: 2, Col: 19},
+		},
+		{
+			name: "h que falha na coluna 0 nao muda a coluna desejada (como no vim)",
+			keys: func(ed *Editor) {
+				for i := 0; i < 20; i++ {
+					press(ed, 'l')
+				}
+				press(ed, 'j')
 				press(ed, 'h')
 				press(ed, 'j')
 			},
-			want: buffer.Pos{Line: 2, Col: 0},
+			want: buffer.Pos{Line: 2, Col: 20},
 		},
 		{
 			name: "$ vai ao fim e gruda no fim nas proximas linhas",
@@ -243,8 +264,8 @@ func TestCursorMovement(t *testing.T) {
 			want: buffer.Pos{Line: 0, Col: 0},
 		},
 		{
-			name: "G vai para a ultima linha e g volta para a primeira",
-			keys: func(ed *Editor) { press(ed, 'G'); press(ed, 'g') },
+			name: "G vai para a ultima linha e gg volta para a primeira",
+			keys: func(ed *Editor) { press(ed, 'G'); press(ed, 'g'); press(ed, 'g') },
 			want: buffer.Pos{Line: 0, Col: 0},
 		},
 		{
@@ -281,11 +302,12 @@ func TestCursorScreenPosWithTabs(t *testing.T) {
 	if ed.Cursor() != (buffer.Pos{Line: 1, Col: 2}) {
 		t.Fatalf("Cursor() = %+v, esperava {Line:1 Col:2}", ed.Cursor())
 	}
-	if frame.Cursor != (render.ScreenPos{Row: 1, Col: 8}) {
-		t.Errorf("Frame.Cursor = %+v, esperava {Row:1 Col:8} (duas tabs = 8 celulas)", frame.Cursor)
+	gw := ed.gutterWidth()
+	if frame.Cursor != (render.ScreenPos{Row: 1, Col: gw + 8}) {
+		t.Errorf("Frame.Cursor = %+v, esperava {Row:1 Col:%d} (gutter + duas tabs = 8 celulas)", frame.Cursor, gw+8)
 	}
-	if got := frameLineText(frame.Lines[1]); []rune(got)[frame.Cursor.Col] != 'x' {
-		t.Errorf("na coluna %d da tela esta %q, esperava 'x'", frame.Cursor.Col, string([]rune(got)[frame.Cursor.Col]))
+	if got := frameLineText(frame.Lines[1]); []rune(got)[frame.Cursor.Col-gw] != 'x' {
+		t.Errorf("na coluna %d do texto esta %q, esperava 'x'", frame.Cursor.Col-gw, string([]rune(got)[frame.Cursor.Col-gw]))
 	}
 }
 
@@ -294,8 +316,13 @@ func TestStatusShowsCursor(t *testing.T) {
 	press(ed, 'j')
 	press(ed, 'l')
 
-	want := " teste.go   Ln 2/2, Col 2"
-	if got := ed.Frame().Status; got != want {
-		t.Errorf("Status = %q, esperava %q", got, want)
+	got := ed.Frame().Status.Text()
+	for _, want := range []string{"NORMAL", "teste.go", "2:2", "All"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("Status = %q, esperava conter %q", got, want)
+		}
+	}
+	if w := len([]rune(got)); w != 80 {
+		t.Errorf("status deveria ocupar a largura inteira (80), ocupa %d", w)
 	}
 }

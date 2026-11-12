@@ -29,7 +29,7 @@ func TestFrameCreationAndDefaults(t *testing.T) {
 	frame := Frame{
 		Lines:  []StyledLine{line},
 		Cursor: ScreenPos{Row: 0, Col: 12},
-		Status: "-- INSERT --  main.go",
+		Status: StyledLine{{Text: "-- INSERT --  main.go"}},
 	}
 
 	if len(frame.Lines) != 1 {

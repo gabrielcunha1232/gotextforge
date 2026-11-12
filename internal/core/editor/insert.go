@@ -21,7 +21,7 @@ func (e *Editor) leaveInsert() {
 }
 
 func (e *Editor) handleInsertKey(k input.Key) {
-	if e.handleMotion(k) {
+	if e.handleInsertMotion(k) {
 		return
 	}
 

@@ -39,7 +39,7 @@ func TestHighlightNoFrame(t *testing.T) {
 		{3, "// fim", syntax.KindComment},
 	}
 	for _, c := range checks {
-		if got := styleOf(t, f.Lines[c.line], c.word); got != theme[c.kind] {
+		if got := withBg(styleOf(t, f.Lines[c.line], c.word), render.Color{}); got != theme[c.kind] {
 			t.Errorf("linha %d %q: estilo %+v, esperava %+v", c.line, c.word, got, theme[c.kind])
 		}
 	}
@@ -52,8 +52,8 @@ func TestHighlightSoEmArquivoGo(t *testing.T) {
 	}
 	ed := New(buf, "README.md")
 	ed.HandleEvent(input.NewResizeEvent(80, 24))
-	for _, s := range ed.Frame().Lines[0] {
-		if s.Style != (render.Style{}) {
+	for _, s := range ed.Frame().Lines[0][1:] {
+		if s.Style.Fg != (render.Color{}) {
 			t.Errorf("arquivo que nao e .go nao deveria ter cores: %+v", s)
 		}
 	}
@@ -96,10 +96,10 @@ func TestHighlightComTelaRolada(t *testing.T) {
 	for last > 0 && strings.HasPrefix(frameLineText(f.Lines[last]), "~") {
 		last--
 	}
-	if got := styleOf(t, f.Lines[last-2], "conteudo"); got != theme[syntax.KindString] {
+	if got := withBg(styleOf(t, f.Lines[last-2], "conteudo"), render.Color{}); got != theme[syntax.KindString] {
 		t.Errorf("linha no meio da raw string, vista depois de G, deveria ser string; veio %+v", got)
 	}
-	if got := styleOf(t, f.Lines[last], "func"); got != theme[syntax.KindKeyword] {
+	if got := withBg(styleOf(t, f.Lines[last], "func"), render.Color{}); got != theme[syntax.KindKeyword] {
 		t.Errorf("depois da raw string fechar, func deveria ser keyword; veio %+v", got)
 	}
 }

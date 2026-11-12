@@ -41,8 +41,8 @@ func TestUndoNoEditor(t *testing.T) {
 					t.Errorf("Cursor() = %+v, esperava %v", got, tt.wantCursor)
 				}
 			}
-			if !strings.Contains(ed.Frame().Status, tt.wantMsg) {
-				t.Errorf("status = %q, esperava conter %q", ed.Frame().Status, tt.wantMsg)
+			if !strings.Contains(ed.Frame().Status.Text(), tt.wantMsg) {
+				t.Errorf("status = %q, esperava conter %q", ed.Frame().Status.Text(), tt.wantMsg)
 			}
 			if ed.Mode() != ModeNormal {
 				t.Errorf("modo = %v, esperava normal", ed.Mode())
@@ -65,16 +65,16 @@ func typeKeysWithCtrl(t *testing.T, ed *Editor, keys string) {
 func TestUndoTiraOMarcadorDeModificado(t *testing.T) {
 	ed, _ := editorWithSaver(t, "abc\n")
 	typeKeys(t, ed, "x")
-	if !strings.Contains(ed.Frame().Status, "[+]") {
-		t.Fatalf("depois de x deveria ter [+]: %q", ed.Frame().Status)
+	if !strings.Contains(ed.Frame().Status.Text(), "[+]") {
+		t.Fatalf("depois de x deveria ter [+]: %q", ed.Frame().Status.Text())
 	}
 	typeKeys(t, ed, "u")
-	if strings.Contains(ed.Frame().Status, "[+]") {
-		t.Errorf("depois de desfazer tudo nao deveria ter [+]: %q", ed.Frame().Status)
+	if strings.Contains(ed.Frame().Status.Text(), "[+]") {
+		t.Errorf("depois de desfazer tudo nao deveria ter [+]: %q", ed.Frame().Status.Text())
 	}
 	typeKeys(t, ed, ":q<CR>")
 	if !ed.ShouldQuit() {
-		t.Errorf(":q deveria sair, ja que nao ha alteracoes; status %q", ed.Frame().Status)
+		t.Errorf(":q deveria sair, ja que nao ha alteracoes; status %q", ed.Frame().Status.Text())
 	}
 }
 

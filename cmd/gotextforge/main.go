@@ -10,23 +10,26 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "uso: gotextforge <caminho-do-arquivo>")
+	if len(os.Args) > 2 {
+		fmt.Fprintln(os.Stderr, "uso: gotextforge [arquivo]")
 		os.Exit(1)
 	}
 
-	path := os.Args[1]
-	f, err := os.Open(path)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "erro ao abrir arquivo %q: %v\n", path, err)
-		os.Exit(1)
-	}
-
-	buf, err := buffer.Load(f)
-	f.Close()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "erro ao ler arquivo %q: %v\n", path, err)
-		os.Exit(1)
+	var buf *buffer.Buffer
+	path := ""
+	if len(os.Args) == 2 {
+		path = os.Args[1]
+		f, err := os.Open(path)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "erro ao abrir arquivo %q: %v\n", path, err)
+			os.Exit(1)
+		}
+		buf, err = buffer.Load(f)
+		f.Close()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "erro ao ler arquivo %q: %v\n", path, err)
+			os.Exit(1)
+		}
 	}
 
 	ed := editor.New(buf, path)

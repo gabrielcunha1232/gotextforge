@@ -4,28 +4,36 @@
 
 ## Estado atual (atualizado em 2026-11-12)
 
-**MS0, MS1, MS2 e MS3 concluídos.** O editor abre um arquivo pela linha de comando e mostra o conteúdo no terminal (Bubble Tea v2). Recursos atuais:
-- **Movimento:** cursor (`hjkl`, setas, `g`/`G`, `0`/`$`, PgUp/PgDn), com a tela seguindo o cursor.
-- **Edição:** modo insert (`i a I A o O`), modo normal (`x`) e undo/redo (`u`, Ctrl+r).
+**MS0 a MS4 concluídos, mais um visual estilo LazyVim.** O editor abre um arquivo pela linha de comando, ou sem argumento mostra uma tela inicial com logo, no terminal (Bubble Tea v2). Recursos atuais:
+- **Vim (MS4, engine em `internal/core/engine`):**
+  - counts: `3j`, `2d3w`;
+  - motions: `h j k l w W b B e E 0 ^ $ gg G f F t T { }`, setas, PgUp/PgDn;
+  - operadores `d c y` com qualquer motion, e `dd cc yy`;
+  - text objects: `iw aw iW aW i" a" i' a' i` + "`" + ` a` + "`" + ` i( a( i[ a[ i{ a{ i< a< ip ap`;
+  - atalhos `x X D C s S Y`, além de `p P J r`;
+  - insert com `i a I A o O`, e undo/redo (`u`, Ctrl+r, com count).
 - **Arquivo:** salvar e sair (`:w :q :q! :wq :x`).
+- **Visual:** paleta truecolor inspirada no Tokyo Night (assume terminal escuro); números de linha relativos, com o da linha atual em laranja; destaque da linha do cursor; status line estilo lualine (modo colorido, arquivo `[+]`, comando pendente, `go`, progresso, linha:coluna); erros em vermelho; tela inicial com logo em degradê.
 
 O critério do MS2 foi verificado de ponta a ponta: o editor modifica o `main.go` de um módulo real, salva com `:wq`, e o `go build` e o binário rodam.
 
 Arquivos `.go` têm syntax highlight (MS3): palavras-chave, strings, números, comentários, identificadores predeclarados e nomes de função, com comentários de bloco e raw strings que atravessam linhas tratados corretamente.
 
-**Próximo:** MS4, a engine vim (motions, operadores `d/c/y`, text objects simples e counts), com estado *pending*.
+**Próximo:** MS5, gopls via LSP (diagnósticos, hover, completion). O posicionamento em UTF-16 fica só no cliente LSP (D3).
 
 ### Estrutura real (difere do ROADMAP, que ainda mostra `core/` na raiz)
 
 ```
-cmd/gotextforge/main.go     lê os.Args[1] → buffer.Load → editor.New → tui.Run; erros saem antes do TUI
+cmd/gotextforge/main.go     [arquivo] → buffer.Load → editor.New → tui.Run; sem argumento abre a tela inicial; erros saem antes do TUI
 internal/core/input/        Event{Kind, Key, Width, Height}, Key{Code, Rune, Mod} (comparável, vira chave de map)
-internal/core/render/       Frame{Lines, Cursor ScreenPos, Status}, StyledLine = []Span, Style, Color{Kind ANSI|RGB}
+internal/core/render/       Frame{Lines, Cursor ScreenPos, CursorShape, Status StyledLine}, StyledLine = []Span (Text(), Width()), Style, Color{Kind ANSI|RGB}
 internal/core/buffer/       [][]rune somente leitura; Load(io.Reader); LineEnding (LF/CRLF); HasBOM; ErrUTF16
 internal/core/view/         Viewport (clamp, EnsureVisible); layout único → FormatLine (texto) e RenderLine (spans com estilo); ScreenCol
 internal/core/syntax/       HighlightLine(linha, estado) via go/scanner; Cache de estado por linha + NextState (atalho exato)
 internal/core/storage/      Save atômico (tmp + Sync + Rename)
-internal/core/editor/       junta buffer + viewport; HandleEvent(Event); Frame() render.Frame
+internal/core/engine/       vim: Parser (gramática + estado pending, Pending() = showcmd), ApplyMotion, TextObject, ChangeWordTarget
+internal/core/editor/       editor.go (estado/eventos), normal.go (executa comandos da engine, registrador, p/J/r),
+                            insert.go, command.go (:w :q...), ui.go (Frame: gutter, cursorline, statusline), intro.go, theme.go
 internal/frontend/tui/      TranslateKey (tea → input.Key), RenderFrame (Frame → string com SGR ANSI direto), model
 ```
 
@@ -89,8 +97,9 @@ O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda
 1. ~~Milestone 0~~ ✅ e ~~Milestone 1~~ ✅.
 2. ~~Milestone 2~~ ✅.
    - Pendências pequenas, boas para o humano fazer: autoindent no Enter e no `o`; `:w outro.go`; abrir um arquivo inexistente como novo.
-3. ~~Milestone 3~~ ✅.
-   - **Próximo é o MS4, a engine vim**: motions, operadores `d/c/y`, text objects (`iw`, `ap`), counts e o estado *pending* (`d` espera a motion). Ela substitui o andaime de teclas que hoje fica em `editor.handleNormalKey`/`handleMotion`.
+3. ~~Milestone 3~~ ✅ e ~~Milestone 4~~ ✅. O critério do MS4 (`ciw`, `dap`, `dd` e counts) está coberto em `editor/vim_test.go`, com 66 sequências de teclas.
+   - O que ficou fora do MS4 (bom para depois): `.` (repetir), `;`/`,`, modo visual, registradores nomeados (`"a`), marcas, `%`, `ge`, autoindent, count no `i`.
+   - **Próximo é o MS5, o gopls via LSP.**
 4. Seguir a tabela de milestones do ROADMAP.md; cada sessão começar pedindo objetivo + critério de aceite.
 5. Pendente (do humano): atualizar a árvore do `ROADMAP.md` para `internal/`.
 
@@ -109,5 +118,9 @@ O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda
 - **UTF-8 inválido (resolvido no MS2)**: o arquivo abre (mostrando `�`), mas o `:w` é bloqueado (`buffer.HasInvalidUTF8`), para não destruir os bytes originais.
 - **Salvar = `storage.Save`, atômico**: grava num `.nome.*.tmp` na mesma pasta, faz `Sync` e depois `Rename` por cima do original. Segue symlinks e preserva permissões. Num erro, o original fica intacto.
 - **Fidelidade ao salvar**: `buffer.WriteTo` devolve o mesmo LF/CRLF, o mesmo BOM e o mesmo newline final (ou a falta dele) que o arquivo tinha. A ida e volta Load→WriteTo é testada byte a byte. Exceção conhecida: um arquivo com finais de linha **misturados** é normalizado para CRLF se tiver qualquer `\r\n`.
+- **O `Status` do `Frame` virou `StyledLine`** (foi `string` até o MS3): o core monta a status line colorida, e o frontend só desenha spans.
+- **O tema assume terminal escuro** (cores RGB do Tokyo Night, com fundo de destaque `#292e42`). Num terminal claro, o destaque da linha fica feio; um tema claro ou configurável fica para o MS6.
+- **Semântica vim seguida à risca, e testada:** um movimento que falha não mexe na coluna desejada; `cw` age como `ce`; `dw` na última palavra da linha não junta linhas; `i{` em várias linhas vira operação por linhas inteiras; o undo de `ciw` mais o texto digitado é um passo só.
+- **Teste aleatório** (`editor/random_test.go`): 80 mil teclas vim aleatórias, com semente fixa, verificando que não há panic, que o cursor é sempre válido e que nenhuma linha passa da largura da tela.
 - **Sair é decisão do core**: `editor.ShouldQuit()`. O TUI só obedece; ele não trata mais o Ctrl+c.
 - **Undo mora no buffer** (`history.go`): cada `Insert`/`Delete` é registrado. O editor agrupa as mudanças com `BeginChange`/`EndChange`: um comando do modo normal é um passo, e uma sessão inteira de insert (do `i` ao Esc) também é um passo. O undo devolve o cursor para onde ele estava **antes** do comando. O `Modified()` compara o id do topo da pilha com o id salvo, então desfazer até o estado salvo tira o `[+]`.

@@ -50,6 +50,28 @@ type Span struct {
 
 type StyledLine []Span
 
+func (l StyledLine) Text() string {
+	n := 0
+	for _, s := range l {
+		n += len(s.Text)
+	}
+	b := make([]byte, 0, n)
+	for _, s := range l {
+		b = append(b, s.Text...)
+	}
+	return string(b)
+}
+
+func (l StyledLine) Width() int {
+	w := 0
+	for _, s := range l {
+		for range s.Text {
+			w++
+		}
+	}
+	return w
+}
+
 type ScreenPos struct {
 	Row int
 	Col int // em celulas de tela, nao runes: '世' ocupa 2 celulas (wcwidth)
@@ -66,7 +88,7 @@ type Frame struct {
 	Lines       []StyledLine
 	Cursor      ScreenPos
 	CursorShape CursorShape
-	Status      string
+	Status      StyledLine
 }
 
 // ANSI cria uma cor da paleta de 256 cores: 0–15 básicas, 16–255 estendidas.

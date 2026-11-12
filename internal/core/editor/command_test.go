@@ -98,8 +98,8 @@ func TestCommands(t *testing.T) {
 					t.Errorf("salvou em %q, esperava o caminho completo", fs.path)
 				}
 			}
-			if !strings.Contains(ed.Frame().Status, tt.wantMessage) {
-				t.Errorf("status = %q, esperava conter %q", ed.Frame().Status, tt.wantMessage)
+			if !strings.Contains(ed.Frame().Status.Text(), tt.wantMessage) {
+				t.Errorf("status = %q, esperava conter %q", ed.Frame().Status.Text(), tt.wantMessage)
 			}
 			if ed.buf.Modified() != tt.wantDirty {
 				t.Errorf("Modified() = %v, esperava %v", ed.buf.Modified(), tt.wantDirty)
@@ -127,8 +127,8 @@ func TestCtrlC(t *testing.T) {
 		if ed.ShouldQuit() {
 			t.Error("Ctrl+c com alteracoes nao deveria sair")
 		}
-		if !strings.Contains(ed.Frame().Status, "E37") {
-			t.Errorf("status deveria avisar E37, veio %q", ed.Frame().Status)
+		if !strings.Contains(ed.Frame().Status.Text(), "E37") {
+			t.Errorf("status deveria avisar E37, veio %q", ed.Frame().Status.Text())
 		}
 	})
 
@@ -156,8 +156,8 @@ func TestCommandModeFrame(t *testing.T) {
 	typeKeys(t, ed, ":wq")
 
 	frame := ed.Frame()
-	if frame.Status != ":wq" {
-		t.Errorf("status = %q, esperava %q", frame.Status, ":wq")
+	if frame.Status.Text() != ":wq" {
+		t.Errorf("status = %q, esperava %q", frame.Status.Text(), ":wq")
 	}
 	if frame.Cursor != (render.ScreenPos{Row: 23, Col: 3}) {
 		t.Errorf("cursor = %+v, esperava {Row:23 Col:3} (na linha de status, depois do texto)", frame.Cursor)
@@ -170,15 +170,15 @@ func TestCommandModeFrame(t *testing.T) {
 func TestMensagemSomeNaProximaTecla(t *testing.T) {
 	ed, _ := editorWithSaver(t, "abc\ndef\n")
 	typeKeys(t, ed, ":w<CR>")
-	if !strings.Contains(ed.Frame().Status, "gravado") {
-		t.Fatalf("esperava mensagem de gravado, veio %q", ed.Frame().Status)
+	if !strings.Contains(ed.Frame().Status.Text(), "gravado") {
+		t.Fatalf("esperava mensagem de gravado, veio %q", ed.Frame().Status.Text())
 	}
 	typeKeys(t, ed, "j")
-	if strings.Contains(ed.Frame().Status, "gravado") {
-		t.Errorf("a mensagem deveria sumir depois da proxima tecla, veio %q", ed.Frame().Status)
+	if strings.Contains(ed.Frame().Status.Text(), "gravado") {
+		t.Errorf("a mensagem deveria sumir depois da proxima tecla, veio %q", ed.Frame().Status.Text())
 	}
-	if strings.Contains(ed.Frame().Status, "[+]") {
-		t.Errorf("depois de salvar nao deveria ter [+], veio %q", ed.Frame().Status)
+	if strings.Contains(ed.Frame().Status.Text(), "[+]") {
+		t.Errorf("depois de salvar nao deveria ter [+], veio %q", ed.Frame().Status.Text())
 	}
 }
 
@@ -190,8 +190,8 @@ func TestSemNomeNaoSalva(t *testing.T) {
 	if fs.calls != 0 {
 		t.Error("nao deveria tentar salvar um buffer sem nome")
 	}
-	if !strings.Contains(ed.Frame().Status, "E32") {
-		t.Errorf("status deveria avisar E32, veio %q", ed.Frame().Status)
+	if !strings.Contains(ed.Frame().Status.Text(), "E32") {
+		t.Errorf("status deveria avisar E32, veio %q", ed.Frame().Status.Text())
 	}
 }
 
@@ -217,7 +217,7 @@ func TestSalvarDePontaAPonta(t *testing.T) {
 	typeKeys(t, ed, "jjo<Tab>println(1)<Esc>:wq<CR>")
 
 	if !ed.ShouldQuit() {
-		t.Fatalf("deveria ter saido; status: %q", ed.Frame().Status)
+		t.Fatalf("deveria ter saido; status: %q", ed.Frame().Status.Text())
 	}
 	got, err := os.ReadFile(path)
 	if err != nil {

@@ -22,7 +22,7 @@ func benchFrame(rows, spansPerLine int) render.Frame {
 		}
 		lines[i] = line
 	}
-	return render.Frame{Lines: lines, Status: " bench.go   1-50/100000"}
+	return render.Frame{Lines: lines, Status: render.StyledLine{{Text: " bench.go   1-50/100000"}}}
 }
 
 func BenchmarkRenderFrame(b *testing.B) {

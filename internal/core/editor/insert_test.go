@@ -60,7 +60,7 @@ func TestInsertMode(t *testing.T) {
 		wantCursor buffer.Pos
 		wantMode   Mode
 	}{
-		{name: "i entra no insert e digita antes do cursor", src: "abc", keys: "lXY", want: "abc", wantCursor: pos(0, 1), wantMode: ModeNormal},
+		{name: "sem i as teclas desconhecidas nao inserem texto", src: "abc", keys: "lQZ", want: "abc", wantCursor: pos(0, 1), wantMode: ModeNormal},
 		{name: "i digita na posicao do cursor", src: "abc", keys: "liXY", want: "aXYbc", wantCursor: pos(0, 3), wantMode: ModeInsert},
 		{name: "Esc volta ao normal e o cursor anda 1 para a esquerda", src: "abc", keys: "liXY<Esc>", want: "aXYbc", wantCursor: pos(0, 2), wantMode: ModeNormal},
 		{name: "Esc na coluna 0 nao anda", src: "abc", keys: "i<Esc>", want: "abc", wantCursor: pos(0, 0), wantMode: ModeNormal},
@@ -112,8 +112,8 @@ func TestInsertModeFrame(t *testing.T) {
 	if frame.CursorShape != render.CursorBlock {
 		t.Errorf("no normal o cursor deveria ser bloco, veio %v", frame.CursorShape)
 	}
-	if strings.Contains(frame.Status, "INSERT") || strings.Contains(frame.Status, "[+]") {
-		t.Errorf("status inicial nao deveria ter INSERT nem [+]: %q", frame.Status)
+	if strings.Contains(frame.Status.Text(), "INSERT") || strings.Contains(frame.Status.Text(), "[+]") {
+		t.Errorf("status inicial nao deveria ter INSERT nem [+]: %q", frame.Status.Text())
 	}
 
 	typeKeys(t, ed, "AX")
@@ -121,13 +121,13 @@ func TestInsertModeFrame(t *testing.T) {
 	if frame.CursorShape != render.CursorBar {
 		t.Errorf("no insert o cursor deveria ser barra, veio %v", frame.CursorShape)
 	}
-	if !strings.Contains(frame.Status, "-- INSERT --") {
-		t.Errorf("status deveria mostrar -- INSERT --: %q", frame.Status)
+	if !strings.Contains(frame.Status.Text(), "INSERT") {
+		t.Errorf("status deveria mostrar INSERT: %q", frame.Status.Text())
 	}
-	if !strings.Contains(frame.Status, "[+]") {
-		t.Errorf("status deveria mostrar [+] depois de editar: %q", frame.Status)
+	if !strings.Contains(frame.Status.Text(), "[+]") {
+		t.Errorf("status deveria mostrar [+] depois de editar: %q", frame.Status.Text())
 	}
-	if frame.Cursor != (render.ScreenPos{Row: 0, Col: 4}) {
+	if frame.Cursor != (render.ScreenPos{Row: 0, Col: ed.gutterWidth() + 4}) {
 		t.Errorf("cursor depois do ultimo caractere deveria estar na coluna 4, veio %+v", frame.Cursor)
 	}
 	if got := frameLineText(frame.Lines[0]); got != "abcX" {
@@ -135,8 +135,8 @@ func TestInsertModeFrame(t *testing.T) {
 	}
 
 	typeKeys(t, ed, "<Esc>")
-	if strings.Contains(ed.Frame().Status, "INSERT") {
-		t.Errorf("depois de Esc o status nao deveria ter INSERT: %q", ed.Frame().Status)
+	if strings.Contains(ed.Frame().Status.Text(), "INSERT") {
+		t.Errorf("depois de Esc o status nao deveria ter INSERT: %q", ed.Frame().Status.Text())
 	}
 }
 

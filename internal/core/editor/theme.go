@@ -3,35 +3,62 @@ package editor
 import (
 	"github.com/gabrielcunha1232/gotextforge/internal/core/render"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/syntax"
-	"github.com/gabrielcunha1232/gotextforge/internal/core/view"
+)
+
+var (
+	colBlack       = render.RGB(0x15, 0x16, 0x1e)
+	colBgHighlight = render.RGB(0x29, 0x2e, 0x42)
+	colBgStatus    = render.RGB(0x1f, 0x23, 0x35)
+	colFg          = render.RGB(0xc0, 0xca, 0xf5)
+	colFgDark      = render.RGB(0xa9, 0xb1, 0xd6)
+	colFgGutter    = render.RGB(0x3b, 0x42, 0x61)
+	colDark3       = render.RGB(0x54, 0x5c, 0x7e)
+	colComment     = render.RGB(0x56, 0x5f, 0x89)
+	colBlue        = render.RGB(0x7a, 0xa2, 0xf7)
+	colBlue1       = render.RGB(0x2a, 0xc3, 0xde)
+	colMagenta     = render.RGB(0xbb, 0x9a, 0xf7)
+	colOrange      = render.RGB(0xff, 0x9e, 0x64)
+	colYellow      = render.RGB(0xe0, 0xaf, 0x68)
+	colGreen       = render.RGB(0x9e, 0xce, 0x6a)
+	colRed         = render.RGB(0xf7, 0x76, 0x8e)
 )
 
 var theme = [...]render.Style{
 	syntax.KindPlain:       {},
-	syntax.KindKeyword:     {Fg: render.ColorMagenta},
-	syntax.KindString:      {Fg: render.ColorGreen},
-	syntax.KindNumber:      {Fg: render.ColorYellow},
-	syntax.KindComment:     {Fg: render.ColorBrightBlack, Italic: true},
-	syntax.KindPredeclared: {Fg: render.ColorCyan},
-	syntax.KindFunc:        {Fg: render.ColorBlue},
+	syntax.KindKeyword:     {Fg: colMagenta, Italic: true},
+	syntax.KindString:      {Fg: colGreen},
+	syntax.KindNumber:      {Fg: colOrange},
+	syntax.KindComment:     {Fg: colComment, Italic: true},
+	syntax.KindPredeclared: {Fg: colBlue1},
+	syntax.KindFunc:        {Fg: colBlue},
 }
 
-func (e *Editor) renderBufferLine(i int) render.StyledLine {
-	runes := e.buf.Line(i)
-	if !e.highlight {
-		return view.RenderLine(runes, plainStyle, e.width, view.DefaultTabStop)
-	}
+var (
+	styleLineNr        = render.Style{Fg: colFgGutter}
+	styleCursorLineNr  = render.Style{Fg: colOrange, Bold: true, Bg: colBgHighlight}
+	styleTilde         = render.Style{Fg: colDark3}
+	styleStatusB       = render.Style{Fg: colFg, Bg: colFgGutter}
+	styleStatusC       = render.Style{Fg: colFgDark, Bg: colBgStatus}
+	styleStatusError   = render.Style{Fg: colRed, Bg: colBgStatus, Bold: true}
+	styleStatusPending = render.Style{Fg: colOrange, Bg: colBgStatus, Bold: true}
+	styleIntroSub      = render.Style{Fg: colComment, Italic: true}
+	styleIntroKey      = render.Style{Fg: colBlue, Bold: true}
+	styleIntroDesc     = render.Style{Fg: colFgDark}
+)
 
-	tokens, _ := syntax.HighlightLine(runes, e.syntax.StateAt(e.buf, i))
-	styles := make([]render.Style, len(runes))
-	for _, t := range tokens {
-		for j := t.Start; j < t.End; j++ {
-			styles[j] = theme[t.Kind]
-		}
-	}
-	return view.RenderLine(runes, func(j int) render.Style { return styles[j] }, e.width, view.DefaultTabStop)
+var modeColors = map[Mode]render.Color{
+	ModeNormal:  colBlue,
+	ModeInsert:  colGreen,
+	ModeCommand: colYellow,
 }
 
-func plainStyle(int) render.Style {
-	return render.Style{}
+var modeNames = map[Mode]string{
+	ModeNormal:  "NORMAL",
+	ModeInsert:  "INSERT",
+	ModeCommand: "COMMAND",
+}
+
+func withBg(s render.Style, bg render.Color) render.Style {
+	s.Bg = bg
+	return s
 }
