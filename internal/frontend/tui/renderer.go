@@ -10,25 +10,13 @@ import (
 	"github.com/gabrielcunha1232/gotextforge/internal/core/render"
 )
 
-func RenderFrame(frame render.Frame, height int) string {
+func RenderFrame(frame render.Frame) string {
 	var b strings.Builder
 
-	for i, line := range frame.Lines {
-		if i > 0 {
-			b.WriteByte('\n')
-		}
+	for _, line := range frame.Lines {
 		for _, span := range line {
 			b.WriteString(applyStyle(span.Style).Render(span.Text))
 		}
-	}
-
-	contentLines := len(frame.Lines)
-	if contentLines == 0 {
-		contentLines = 1
-	}
-	if height > contentLines+1 {
-		b.WriteString(strings.Repeat("\n", height-contentLines-1))
-	} else {
 		b.WriteByte('\n')
 	}
 
@@ -53,7 +41,6 @@ func applyStyle(s render.Style) lipgloss.Style {
 	if s.Italic {
 		ls = ls.Italic(true)
 	}
-
 	if s.Underline || s.Undercurl {
 		ls = ls.Underline(true)
 	}
