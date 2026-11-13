@@ -170,3 +170,34 @@ func TestTerminalAvisaInterativo(t *testing.T) {
 		t.Errorf("deveria avisar que programas interativos precisam do terminal: %q", ed.Frame().Status.Text())
 	}
 }
+
+func TestTerminalMostraAPasta(t *testing.T) {
+	ed, root := projectEditor(t, map[string]string{"a.go": "package a\n"})
+	typeKeys(t, ed, " tt")
+	header := ed.Frame().Lines[ed.textHeight()].Text()
+	if !strings.Contains(header, filepath.Base(root)) {
+		t.Errorf("mesmo antes de rodar, o cabecalho deveria mostrar a pasta: %q", header)
+	}
+}
+
+func TestShortenPath(t *testing.T) {
+	if got := shortenPath("curto", 16); got != "curto" {
+		t.Errorf("caminho curto nao muda: %q", got)
+	}
+	if got := shortenPath(`C:\Projetos\WAILS\gotextforge`, 16); len([]rune(got)) != 16 || !strings.HasSuffix(got, "gotextforge") {
+		t.Errorf("caminho longo deveria ficar com 16 runas terminando no nome da pasta: %q", got)
+	}
+}
+
+func TestExploradorAtualizaDepoisDoComando(t *testing.T) {
+	ed, root := projectEditor(t, map[string]string{"a.go": "package a\n"})
+	typeKeys(t, ed, " e<Esc>")
+	ed.runCommand("mkdir oi")
+	waitTerminal(t, ed)
+	if !exists(filepath.Join(root, "oi")) {
+		t.Fatalf("mkdir deveria ter criado a pasta: %s", terminalText(ed))
+	}
+	if got := strings.Join(rowNames(ed), ","); !strings.Contains(got, "oi/") {
+		t.Errorf("o explorador deveria mostrar a pasta criada pelo comando: %s", got)
+	}
+}

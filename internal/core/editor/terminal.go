@@ -159,6 +159,7 @@ func (e *Editor) receiveTerminal(terminalTick) {
 		return
 	}
 	t.done = true
+	e.refreshTree()
 	elapsed := t.snap.Elapsed.Round(100 * time.Millisecond)
 	switch t.snap.State {
 	case runner.Succeeded:
@@ -332,8 +333,13 @@ func (e *Editor) terminalPanel(rows, width int) []render.StyledLine {
 	}
 
 	header := render.StyledLine{{Text: " TERMINAL ", Style: render.Style{Fg: colBlack, Bg: color, Bold: true}}}
+	dir := t.dir
+	if dir == "" {
+		dir = e.projectRoot()
+	}
+	header = append(header, render.Span{Text: " " + shortenPath(sanitize(dir), max(width/3, 16)) + " ", Style: render.Style{Fg: colBlue, Bg: colBgStatus}})
 	if t.last != "" {
-		header = append(header, render.Span{Text: " $ " + sanitize(t.last) + " ", Style: render.Style{Fg: colFg, Bg: colBgStatus, Bold: true}})
+		header = append(header, render.Span{Text: "$ " + sanitize(t.last) + " ", Style: render.Style{Fg: colFg, Bg: colBgStatus, Bold: true}})
 	}
 	right := render.Span{Text: " " + status + " ", Style: bar}
 	if gap := width - header.Width() - (render.StyledLine{right}).Width(); gap > 0 {
@@ -370,4 +376,12 @@ func (e *Editor) terminalPanel(rows, width int) []render.StyledLine {
 		out = append(out, truncateLine(line, width))
 	}
 	return out
+}
+
+func shortenPath(path string, limit int) string {
+	r := []rune(path)
+	if len(r) <= limit || limit < 2 {
+		return path
+	}
+	return "…" + string(r[len(r)-limit+1:])
 }
