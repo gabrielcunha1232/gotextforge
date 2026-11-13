@@ -334,10 +334,7 @@ func TestStatusDoServidor(t *testing.T) {
 		}
 	}
 	if ed.Async() == nil {
-		t.Error("Async deveria devolver o canal do cliente")
-	}
-	if editorFrom(t, "").Async() != nil {
-		t.Error("sem cliente, Async deveria ser nil")
+		t.Error("Async deveria devolver o canal de eventos do editor")
 	}
 }
 

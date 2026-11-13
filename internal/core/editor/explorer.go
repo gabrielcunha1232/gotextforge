@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gabrielcunha1232/gotextforge/internal/core/engine"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/input"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/render"
 )
@@ -215,10 +214,7 @@ func (e *Editor) relToRoot(path string) string {
 
 func (e *Editor) handleExplorerKey(k input.Key) {
 	x := &e.explorer
-	if k.Code == input.KeyRune && k.Rune == ' ' || e.parser.Pending() != "" {
-		if cmd, done := e.parser.Feed(k); done && cmd.Action != engine.ActionNone {
-			e.runAction(cmd)
-		}
+	if e.feedLeader(k) {
 		return
 	}
 

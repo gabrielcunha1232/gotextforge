@@ -95,6 +95,10 @@ const (
 	ActionFindBuffers
 	ActionNewFile
 	ActionCloseTab
+	ActionTerminalToggle
+	ActionTerminalNew
+	ActionTerminalRerun
+	ActionRun
 )
 
 type Command struct {
@@ -103,6 +107,7 @@ type Command struct {
 	Motion   Motion
 	Action   Action
 	Char     rune
+	Arg      string
 }
 
 func (c Command) Times() int {

@@ -33,15 +33,17 @@ func (e *Editor) handleInsertKey(k input.Key) {
 	case k.Code == input.KeyEsc || isCtrl(k, 'c'):
 		e.leaveInsert()
 	case k.Code == input.KeyEnter && k.Mod == 0:
-		e.insertText("\n")
+		e.newline()
 	case k.Code == input.KeyTab && k.Mod == 0:
 		e.insertText("\t")
 	case k.Code == input.KeyBackspace:
-		e.backspace()
+		if !e.backspacePair() {
+			e.backspace()
+		}
 	case k.Code == input.KeyDelete:
 		e.deleteForward()
 	case k.Code == input.KeyRune && k.Mod == 0 && k.Rune != 0:
-		e.insertText(string(k.Rune))
+		e.typeRune(k.Rune)
 	}
 }
 

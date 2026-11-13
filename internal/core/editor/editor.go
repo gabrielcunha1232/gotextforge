@@ -9,6 +9,7 @@ import (
 	"github.com/gabrielcunha1232/gotextforge/internal/core/engine"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/input"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/lsp"
+	"github.com/gabrielcunha1232/gotextforge/internal/core/runner"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/storage"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/syntax"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/view"
@@ -24,6 +25,7 @@ const (
 	ModePrompt
 	ModeExplorer
 	ModeFinder
+	ModeTerminal
 )
 
 type SaveFunc func(path string, src io.WriterTo) error
@@ -77,6 +79,9 @@ type Editor struct {
 	comp     *completion
 	search   searchState
 	root     string
+	term     terminal
+	start    StartFunc
+	async    chan any
 	explorer explorer
 	finder   *finder
 	prompt   *prompt
@@ -91,6 +96,8 @@ func New(buf *buffer.Buffer, path string) *Editor {
 		docs:     []*document{doc},
 		save:     storage.Save,
 		load:     loadFile,
+		async:    make(chan any, 256),
+		start:    runner.Start,
 		width:    80,
 		height:   24,
 	}
@@ -137,6 +144,8 @@ func (e *Editor) HandleEvent(ev input.Event) {
 			e.handleExplorerKey(ev.Key)
 		case ModeFinder:
 			e.handleFinderKey(ev.Key)
+		case ModeTerminal:
+			e.handleTerminalKey(ev.Key)
 		case ModeCommand, ModeSearch:
 			e.handleCommandKey(ev.Key)
 		default:

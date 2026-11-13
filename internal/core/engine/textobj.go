@@ -216,3 +216,7 @@ func bracketObject(t Text, at buffer.Pos, open, close rune, inner bool) (Range, 
 
 	return Range{Start: buffer.Pos{Line: openPos.Line, Col: openPos.Col + 1}, End: closePos}, true
 }
+
+func FindOpen(t Text, at buffer.Pos, open, close rune) (buffer.Pos, bool) {
+	return findOpen(t, at, open, close)
+}

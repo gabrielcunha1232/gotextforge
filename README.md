@@ -22,6 +22,11 @@ Editor de texto modal para Go, no terminal, no estilo do Neovim/LazyVim. É escr
   - explorador lateral (como o neo-tree) para criar, renomear e apagar arquivos e pastas;
   - busca fuzzy de arquivos (como o Telescope): `edtgo` acha `editor/editor.go`;
   - tela inicial com ações de uma tecla.
+- **Painel de comandos:**
+  - roda `go build`, `go test`, `docker compose up` e outros sem sair do editor, com a saída aparecendo enquanto o comando roda;
+  - **Enter num erro (`arquivo.go:12:5`) abre o arquivo na linha**;
+  - Ctrl+c cancela.
+- **Edição confortável:** fecha parênteses, colchetes, chaves e aspas sozinho, e indenta ao dar Enter (`{|}` + Enter abre o bloco já indentado).
 - **Vários arquivos em abas**, uma busca `/` com destaque enquanto você digita, e uma status line no estilo lualine.
 - **Rápido em arquivos grandes:** só as linhas visíveis são desenhadas. Um quadro leva menos de 1 ms, e abrir um arquivo de 110 mil linhas não trava.
 - **Seguro com os seus arquivos:**
@@ -68,6 +73,27 @@ A tecla líder é o **Espaço**, como no LazyVim.
 | `Esc`, `q` | voltar ao editor, fechar o explorador |
 
 Na tela inicial: `f` busca, `e` explora, `n` cria arquivo, `p` troca de pasta, `q` sai.
+
+## Rodando comandos
+
+| Atalho | Comando |
+|---|---|
+| `:!comando` ou `Espaço t n` | roda qualquer comando na pasta do projeto |
+| `Espaço g b` / `g t` / `g r` / `g v` / `g m` | `go build ./...` / `go test ./...` / `go run .` / `go vet ./...` / `go mod tidy` |
+| `Espaço d u` / `d d` / `d p` / `d l` | `docker compose up` / `down` / `docker ps` / `logs -f` |
+| `Espaço t t` | focar, abrir ou fechar o painel |
+| `Espaço t r` | repetir o último comando |
+
+| No painel | |
+|---|---|
+| `j k`, `g G` | percorrer a saída |
+| `n` / `N` | próximo / anterior erro com arquivo:linha |
+| `Enter` | abrir o arquivo do erro na linha certa |
+| `Ctrl+c` | cancelar o comando |
+| `r`, `i` | repetir, digitar um novo comando |
+| `Esc`, `q` | voltar ao editor, fechar o painel |
+
+O painel não é um terminal completo: ele **não recebe teclado**. Programas interativos (`docker exec -it`, um `go run` que lê da entrada) precisam do seu terminal.
 
 ## Atalhos
 

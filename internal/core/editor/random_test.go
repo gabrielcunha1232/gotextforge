@@ -1,10 +1,12 @@
 package editor
 
 import (
+	"errors"
 	"math/rand/v2"
 	"testing"
 
 	"github.com/gabrielcunha1232/gotextforge/internal/core/input"
+	"github.com/gabrielcunha1232/gotextforge/internal/core/runner"
 )
 
 func TestSequenciasAleatoriasNaoQuebramOEditor(t *testing.T) {
@@ -29,6 +31,9 @@ func TestSequenciasAleatoriasNaoQuebramOEditor(t *testing.T) {
 		ed.save = (&fakeSaver{}).save
 		ed.load = fakeFiles(map[string]string{"outro.go": src, "e": "x\n"})
 		ed.SetRoot(sandbox)
+		ed.start = func(string, string, func(bool)) (*runner.Job, error) {
+			return nil, errors.New("comandos desativados no teste aleatorio")
+		}
 		if rng.IntN(2) == 0 {
 			ed.OpenFile("outro.go")
 		}

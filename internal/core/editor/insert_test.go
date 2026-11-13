@@ -85,7 +85,7 @@ func TestInsertMode(t *testing.T) {
 		{name: "x apaga sob o cursor no normal", src: "abc", keys: "lx", want: "ac", wantCursor: pos(0, 1), wantMode: ModeNormal},
 		{name: "x no ultimo caractere recua o cursor", src: "abc", keys: "$x", want: "ab", wantCursor: pos(0, 1), wantMode: ModeNormal},
 		{name: "x em linha vazia nao junta linhas", src: "\nabc", keys: "x", want: "\nabc", wantCursor: pos(0, 0), wantMode: ModeNormal},
-		{name: "fluxo completo", src: "package main\n", keys: "o<CR>func main() {<CR>}<Esc>kA<CR><Tab>println(1)<Esc>", want: "package main\n\nfunc main() {\n\tprintln(1)\n}", wantCursor: pos(3, 10), wantMode: ModeNormal},
+		{name: "fluxo completo", src: "package main\n", keys: "o<CR>func main() {<CR>println(1)<Esc>", want: "package main\n\nfunc main() {\n\tprintln(1)\n}", wantCursor: pos(3, 10), wantMode: ModeNormal},
 	}
 
 	for _, tt := range tests {

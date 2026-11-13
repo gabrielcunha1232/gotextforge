@@ -213,11 +213,13 @@ func (e *Editor) runAction(cmd engine.Command) {
 	case engine.ActionAppendLineEnd:
 		e.enterInsert(buffer.Pos{Line: line, Col: e.buf.LineLen(line)})
 	case engine.ActionOpenBelow:
-		end := e.buf.Insert(buffer.Pos{Line: line, Col: e.buf.LineLen(line)}, "\n")
+		indent := e.openLineIndent(true)
+		end := e.buf.Insert(buffer.Pos{Line: line, Col: e.buf.LineLen(line)}, "\n"+indent)
 		e.enterInsert(end)
 	case engine.ActionOpenAbove:
-		e.buf.Insert(buffer.Pos{Line: line}, "\n")
-		e.enterInsert(buffer.Pos{Line: line})
+		indent := e.openLineIndent(false)
+		e.buf.Insert(buffer.Pos{Line: line}, indent+"\n")
+		e.enterInsert(buffer.Pos{Line: line, Col: len([]rune(indent))})
 	case engine.ActionPasteAfter, engine.ActionPasteBefore:
 		e.paste(cmd.Action == engine.ActionPasteAfter, cmd.Times())
 	case engine.ActionUndo:
@@ -260,6 +262,14 @@ func (e *Editor) runAction(cmd engine.Command) {
 		e.promptNewFile()
 	case engine.ActionCloseTab:
 		e.closeCurrent(false)
+	case engine.ActionTerminalToggle:
+		e.toggleTerminal()
+	case engine.ActionTerminalNew:
+		e.promptCommand()
+	case engine.ActionTerminalRerun:
+		e.rerunCommand()
+	case engine.ActionRun:
+		e.runCommand(cmd.Arg)
 	case engine.ActionNextTab:
 		e.cycleTab(cmd.Times())
 	case engine.ActionPrevTab:

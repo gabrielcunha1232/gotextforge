@@ -31,7 +31,22 @@ func (e *Editor) SetLanguageClient(c LanguageClient) {
 	for _, d := range e.docs {
 		d.opened = false
 	}
+	if c != nil {
+		e.forward(c)
+	}
 	e.ensureLanguageServer(e.document)
+}
+
+func (e *Editor) forward(c LanguageClient) {
+	events := c.Events()
+	if events == nil {
+		return
+	}
+	go func() {
+		for ev := range events {
+			e.async <- ev
+		}
+	}()
 }
 
 func (e *Editor) SetLanguageServer(start func(path string) LanguageClient) {
@@ -48,20 +63,21 @@ func (e *Editor) ensureLanguageServer(d *document) {
 			return
 		}
 		e.lsp.client = e.lsp.starter(d.path)
+		e.forward(e.lsp.client)
 	}
 	d.synced = d.buf.Version()
 	d.opened = true
 	e.lsp.client.Open(d.path, d.buf.PlainText(), d.synced)
 }
 
-func (e *Editor) Async() <-chan lsp.Event {
-	if e.lsp.client == nil {
-		return nil
-	}
-	return e.lsp.client.Events()
+func (e *Editor) Async() <-chan any {
+	return e.async
 }
 
 func (e *Editor) Close() {
+	if e.term.job != nil {
+		e.term.job.Cancel()
+	}
 	if e.lsp.client != nil {
 		e.lsp.client.Close()
 	}
@@ -94,6 +110,8 @@ func (e *Editor) HandleAsync(ev any) {
 		default:
 			e.hover = newHoverPopup(v.Text)
 		}
+	case terminalTick:
+		e.receiveTerminal(v)
 	case lsp.CompletionEvent:
 		if v.ID != e.lsp.compReq || e.mode != ModeInsert || v.Err != nil {
 			return

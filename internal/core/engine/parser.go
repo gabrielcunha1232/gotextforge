@@ -16,14 +16,26 @@ const (
 	waitLeader
 )
 
-var leaderMap = map[string]Action{
-	"e":  ActionExplorer,
-	" ":  ActionFindFiles,
-	"ff": ActionFindFiles,
-	",":  ActionFindBuffers,
-	"fb": ActionFindBuffers,
-	"fn": ActionNewFile,
-	"bd": ActionCloseTab,
+var leaderMap = map[string]Command{
+	"e":  {Action: ActionExplorer},
+	" ":  {Action: ActionFindFiles},
+	"ff": {Action: ActionFindFiles},
+	",":  {Action: ActionFindBuffers},
+	"fb": {Action: ActionFindBuffers},
+	"fn": {Action: ActionNewFile},
+	"bd": {Action: ActionCloseTab},
+	"tt": {Action: ActionTerminalToggle},
+	"tn": {Action: ActionTerminalNew},
+	"tr": {Action: ActionTerminalRerun},
+	"gb": {Action: ActionRun, Arg: "go build ./..."},
+	"gt": {Action: ActionRun, Arg: "go test ./..."},
+	"gr": {Action: ActionRun, Arg: "go run ."},
+	"gv": {Action: ActionRun, Arg: "go vet ./..."},
+	"gm": {Action: ActionRun, Arg: "go mod tidy"},
+	"du": {Action: ActionRun, Arg: "docker compose up"},
+	"dd": {Action: ActionRun, Arg: "docker compose down"},
+	"dp": {Action: ActionRun, Arg: "docker ps"},
+	"dl": {Action: ActionRun, Arg: "docker compose logs -f --tail 100"},
 }
 
 func leaderPrefix(seq string) bool {
@@ -107,8 +119,8 @@ func (p *Parser) Feed(k input.Key) (Command, bool) {
 		return p.cancel()
 	case waitLeader:
 		p.leader += string(r)
-		if a, ok := leaderMap[p.leader]; ok {
-			return p.finish(Command{Action: a})
+		if c, ok := leaderMap[p.leader]; ok {
+			return p.finish(c)
 		}
 		if leaderPrefix(p.leader) {
 			return Command{}, false

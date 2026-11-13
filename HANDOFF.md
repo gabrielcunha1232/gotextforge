@@ -27,6 +27,12 @@
   - `Espaço ,` lista as abas, e `Espaço f n` cria um arquivo novo;
   - tela inicial com ações (`f e n p i q`) e a pasta atual;
   - `gotextforge pasta/` abre com essa raiz e o explorador aberto.
+- **Edição confortável:** autofechamento de `() [] {}` e de aspas (sem fechar o `'` de `don't` nem depois de `\`); digitar o fechamento pula por cima; Backspace entre um par vazio apaga os dois; Enter mantém a indentação, aumenta um nível depois de `{ ( [` e, entre `{}`, abre o bloco; `}` numa linha vazia se alinha com a `{` dela; `o`/`O` indentam (`smartedit.go`). No Go, a unidade é a tab; em outros arquivos, 4 espaços se a linha já usa espaços.
+- **Painel de comandos (`runner` + `editor/terminal.go`):**
+  - `:!cmd`, `:term cmd`, `Espaço t n`, e os atalhos `Espaço g b/t/r/v/m` (go) e `Espaço d u/d/p/l` (docker);
+  - a saída aparece em streaming num painel embaixo;
+  - Enter num `arquivo:linha:col` abre o arquivo (se não estiver na pasta, procura pelo sufixo do caminho, porque o `go test` imprime caminhos relativos ao pacote);
+  - `n`/`N` pulam entre erros, Ctrl+c cancela (mata a **árvore** de processos: `taskkill /T` no Windows, process group no Unix), `r` repete.
 - **Visual:** paleta truecolor inspirada no Tokyo Night (assume terminal escuro); números de linha relativos, com o da linha atual em laranja; destaque da linha do cursor; status line estilo lualine (modo colorido, arquivo `[+]`, comando pendente, `go`, progresso, linha:coluna); erros em vermelho; tela inicial com logo em degradê.
 
 O critério do MS2 foi verificado de ponta a ponta: o editor modifica o `main.go` de um módulo real, salva com `:wq`, e o `go build` e o binário rodam.
@@ -159,5 +165,8 @@ O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda
 - **A busca de arquivos ignora** os arquivos e pastas ocultos (`.git`, `.env`...), além de `node_modules` e das configurações de IDE. O limite é de 50 mil arquivos.
 - **Abrir um arquivo sempre devolve o foco ao editor** (`OpenFile` sai dos modos explorer, finder e prompt).
 - **O teste aleatório roda numa pasta temporária** (`SetRoot(t.TempDir())`). Sem isso, as teclas aleatórias poderiam criar ou apagar arquivos no repositório pelo explorador. Os testes de navegação também usam pastas temporárias reais.
+- **Terminal embarcado — corte do roadmap reaberto em parte:** o painel é um *executor de comandos*, não um terminal. Não há PTY, não há entrada de teclado e não roda programas interativos. Os comandos rodam com `cmd /S /C` (Windows) ou `sh -c` (Unix) na raiz do projeto; os códigos ANSI e os `\r` de barras de progresso são limpos (`runner.CleanLine`); a saída tem limite de 5000 linhas; a interface é notificada no máximo a cada 50 ms. Um terminal real (VT100 + ConPTY) continua fora do escopo e se encaixaria nesse mesmo painel.
+- **Um único canal assíncrono:** `editor.Async()` agora é `<-chan any`, criado pelo próprio editor. O gopls (por meio de uma goroutine `forward`) e o runner (`terminalTick`) mandam eventos nele.
+- **Runner injetável** (`editor.start`, como o `save` e o `load`). O teste aleatório desativa o runner: com Espaço e letras aleatórias, ele poderia montar e executar texto arbitrário no shell.
 - **Sair é decisão do core**: `editor.ShouldQuit()`. O TUI só obedece; ele não trata mais o Ctrl+c.
 - **Undo mora no buffer** (`history.go`): cada `Insert`/`Delete` é registrado. O editor agrupa as mudanças com `BeginChange`/`EndChange`: um comando do modo normal é um passo, e uma sessão inteira de insert (do `i` ao Esc) também é um passo. O undo devolve o cursor para onde ele estava **antes** do comando. O `Modified()` compara o id do topo da pilha com o id salvo, então desfazer até o estado salvo tira o `[+]`.

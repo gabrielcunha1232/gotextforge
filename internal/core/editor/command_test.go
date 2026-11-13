@@ -214,7 +214,7 @@ func TestSalvarDePontaAPonta(t *testing.T) {
 
 	ed := New(buf, path)
 	ed.HandleEvent(input.NewResizeEvent(80, 24))
-	typeKeys(t, ed, "jjo<Tab>println(1)<Esc>:wq<CR>")
+	typeKeys(t, ed, "jjoprintln(1)<Esc>:wq<CR>")
 
 	if !ed.ShouldQuit() {
 		t.Fatalf("deveria ter saido; status: %q", ed.Frame().Status.Text())

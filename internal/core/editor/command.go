@@ -39,6 +39,10 @@ func (e *Editor) handleCommandKey(k input.Key) {
 }
 
 func (e *Editor) execute(cmd string) {
+	if strings.HasPrefix(cmd, "!") {
+		e.runCommand(strings.TrimSpace(cmd[1:]))
+		return
+	}
 	name, arg, _ := strings.Cut(cmd, " ")
 	arg = strings.TrimSpace(arg)
 
@@ -80,6 +84,12 @@ func (e *Editor) execute(cmd string) {
 		if e.writeAll() {
 			e.quit = true
 		}
+	case "term", "terminal", "run":
+		if arg == "" {
+			e.openTerminal(true)
+			return
+		}
+		e.runCommand(arg)
 	case "bn", "bnext", "tabn", "tabnext":
 		e.cycleTab(1)
 	case "bp", "bprev", "bprevious", "tabp", "tabprev", "tabprevious":
