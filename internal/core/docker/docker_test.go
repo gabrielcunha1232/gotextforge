@@ -115,3 +115,62 @@ func TestInfoDaemonDown(t *testing.T) {
 		t.Fatalf("esperava ErrDaemonDown, veio %v", err)
 	}
 }
+
+// NDJSON: um objeto por linha (compose v2 e algumas versões do v5).
+const sampleComposeNDJSON = `{"Name":"proj-api-1","Service":"api","State":"running","Status":"Up 2 hours","Health":"healthy","ExitCode":0,"Publishers":[{"URL":"0.0.0.0","TargetPort":8080,"PublishedPort":8080,"Protocol":"tcp"}]}
+{"Name":"proj-worker-1","Service":"worker","State":"exited","Status":"Exited (1) 3 minutes ago","Health":"","ExitCode":1,"Publishers":null}
+`
+
+// Array: a mesma informação como um único array JSON (outras versões do v5).
+const sampleComposeArray = `[
+  {"Name":"proj-api-1","Service":"api","State":"running","Status":"Up 2 hours","Health":"healthy","ExitCode":0,"Publishers":[{"URL":"0.0.0.0","TargetPort":8080,"PublishedPort":8080,"Protocol":"tcp"}]},
+  {"Name":"proj-worker-1","Service":"worker","State":"exited","Status":"Exited (1) 3 minutes ago","Health":"","ExitCode":1,"Publishers":null}
+]`
+
+func checkComposeSample(t *testing.T, got []ComposeService) {
+	t.Helper()
+	if len(got) != 2 {
+		t.Fatalf("esperava 2 serviços, veio %d: %+v", len(got), got)
+	}
+	api := got[0]
+	if api.Service != "api" || api.State != "running" || api.Health != "healthy" {
+		t.Errorf("serviço api incorreto: %+v", api)
+	}
+	if api.Ports != "0.0.0.0:8080->8080/tcp" {
+		t.Errorf("portas do api incorretas: %q", api.Ports)
+	}
+	worker := got[1]
+	if worker.State != "exited" || worker.ExitCode != 1 {
+		t.Errorf("serviço worker (saiu com erro) incorreto: %+v", worker)
+	}
+	if worker.Ports != "" {
+		t.Errorf("worker sem publishers deveria ter portas vazias, veio %q", worker.Ports)
+	}
+}
+
+func TestComposePSNDJSON(t *testing.T) {
+	c := New(fakeExec(sampleComposeNDJSON, nil))
+	got, err := c.ComposePS()
+	if err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+	checkComposeSample(t, got)
+}
+
+func TestComposePSArray(t *testing.T) {
+	c := New(fakeExec(sampleComposeArray, nil))
+	got, err := c.ComposePS()
+	if err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+	checkComposeSample(t, got)
+}
+
+func TestComposePSExecError(t *testing.T) {
+	want := errors.New("no configuration file provided")
+	c := New(fakeExec("", want))
+	_, err := c.ComposePS()
+	if !errors.Is(err, want) {
+		t.Fatalf("esperava o erro do Exec repassado, veio %v", err)
+	}
+}
