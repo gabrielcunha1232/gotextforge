@@ -65,3 +65,53 @@ func TestListContainersEmpty(t *testing.T) {
 		t.Fatalf("esperava lista vazia, veio %+v", got)
 	}
 }
+
+const sampleImages = `{"Containers":"N/A","CreatedAt":"2026-11-01 12:00:00 +0000 UTC","CreatedSince":"2 weeks ago","Digest":"<none>","ID":"sha256:aaa","Repository":"postgres","SharedSize":"N/A","Size":"438MB","Tag":"16","UniqueSize":"N/A","VirtualSize":"438MB"}
+linha de lixo
+{"Containers":"N/A","CreatedAt":"2026-11-10 08:00:00 +0000 UTC","CreatedSince":"3 days ago","Digest":"<none>","ID":"sha256:bbb","Repository":"myapp/worker","SharedSize":"N/A","Size":"22.5MB","Tag":"latest","UniqueSize":"N/A","VirtualSize":"22.5MB"}
+`
+
+func TestListImages(t *testing.T) {
+	c := New(fakeExec(sampleImages, nil))
+	got, err := c.ListImages()
+	if err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("esperava 2 imagens (linha ruim pulada), veio %d: %+v", len(got), got)
+	}
+	if got[0].Repository != "postgres" || got[0].Tag != "16" || got[0].Size != "438MB" {
+		t.Errorf("imagem 0 incorreta: %+v", got[0])
+	}
+	if got[1].ID != "sha256:bbb" || got[1].Repository != "myapp/worker" {
+		t.Errorf("imagem 1 incorreta: %+v", got[1])
+	}
+}
+
+func TestListImagesExecError(t *testing.T) {
+	want := errors.New("falhou")
+	c := New(fakeExec("", want))
+	_, err := c.ListImages()
+	if !errors.Is(err, want) {
+		t.Fatalf("esperava o erro do Exec repassado, veio %v", err)
+	}
+}
+
+func TestInfoOK(t *testing.T) {
+	c := New(fakeExec("29.9.1\n", nil))
+	ver, err := c.Info()
+	if err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+	if ver != "29.9.1" {
+		t.Errorf("esperava versão aparada, veio %q", ver)
+	}
+}
+
+func TestInfoDaemonDown(t *testing.T) {
+	c := New(fakeExec("", errors.New("failed to connect to the docker API")))
+	_, err := c.Info()
+	if !errors.Is(err, ErrDaemonDown) {
+		t.Fatalf("esperava ErrDaemonDown, veio %v", err)
+	}
+}
