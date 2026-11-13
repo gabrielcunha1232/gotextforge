@@ -237,8 +237,8 @@ func (e *Editor) statusLine() render.StyledLine {
 	}
 	right = append(right, e.lspStatusSpans()...)
 	right = append(right,
-		render.Span{Text: " " + e.progress() + " ", Style: styleStatusB},
-		render.Span{Text: fmt.Sprintf(" %d:%d ", e.cursor.Line+1, e.cursor.Col+1), Style: modeStyle},
+		render.Span{Text: " " + e.progress() + " ", Style: styleStatusC},
+		render.Span{Text: fmt.Sprintf(" %d:%d ", e.cursor.Line+1, e.cursor.Col+1), Style: styleStatusB},
 	)
 
 	if left.Width()+right.Width() > e.width {

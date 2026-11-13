@@ -68,7 +68,7 @@ func logoRows() [5]string {
 }
 
 func gradient(t float64) render.Color {
-	stops := []render.Color{colBlue, colMagenta, colRed}
+	stops := []render.Color{colBlue, colTeal, colGreen}
 	if t <= 0 {
 		return stops[0]
 	}
