@@ -187,11 +187,150 @@ func (e *Editor) handleDockerKey(k input.Key) {
 	case (k.Code == input.KeyTab && k.Mod == input.ModShift) || k.Code == input.KeyLeft:
 		d.tab = (d.tab + 2) % 3
 		d.sel, d.top = 0, 0
+	case plain('l'):
+		e.dockerLogs()
+	case plain('s'):
+		e.dockerStartStop()
+	case plain('r'):
+		e.dockerRestart()
+	case plain('b'):
+		e.dockerRebuild()
+	case plain('d'):
+		e.dockerRemove()
+	case plain('x'):
+		e.message = "o painel não é um terminal: use Espaço t n para 'docker exec -it'"
 	case plain('q'):
 		e.closeDocker()
 	case k.Code == input.KeyEsc:
 		e.mode = ModeNormal
 	}
+}
+
+type dockerItem struct {
+	id    string
+	name  string
+	state string
+	tab   dockerTab
+}
+
+func (e *Editor) dockerSelected() (dockerItem, bool) {
+	d := &e.dock
+	switch d.tab {
+	case dockCompose:
+		if d.sel < len(d.services) {
+			s := d.services[d.sel]
+			return dockerItem{id: s.Name, name: s.Service, state: s.State, tab: dockCompose}, true
+		}
+	case dockImages:
+		if d.sel < len(d.images) {
+			img := d.images[d.sel]
+			return dockerItem{id: img.ID, name: shortID(img.ID), tab: dockImages}, true
+		}
+	default:
+		if d.sel < len(d.containers) {
+			c := d.containers[d.sel]
+			return dockerItem{id: c.ID, name: c.Name, state: c.State, tab: dockContainers}, true
+		}
+	}
+	return dockerItem{tab: d.tab}, false
+}
+
+func (e *Editor) dockerLogs() {
+	it, ok := e.dockerSelected()
+	if !ok {
+		return
+	}
+	switch it.tab {
+	case dockImages:
+		e.message = "imagens não têm logs"
+	case dockCompose:
+		e.runCommand("docker compose logs -f --tail 200 " + it.name)
+	default:
+		e.runCommand("docker logs -f --tail 200 " + it.id)
+	}
+}
+
+func (e *Editor) dockerStartStop() {
+	it, ok := e.dockerSelected()
+	if !ok {
+		return
+	}
+	if it.tab == dockImages {
+		e.message = "imagens não iniciam/param; selecione um container"
+		return
+	}
+	verb := "start"
+	if strings.HasPrefix(it.state, "running") {
+		verb = "stop"
+	}
+	if it.tab == dockCompose {
+		e.runCommand("docker compose " + verb + " " + it.name)
+		return
+	}
+	e.runCommand("docker " + verb + " " + it.id)
+}
+
+func (e *Editor) dockerRestart() {
+	it, ok := e.dockerSelected()
+	if !ok {
+		return
+	}
+	switch it.tab {
+	case dockImages:
+		e.message = "imagens não reiniciam; selecione um container"
+	case dockCompose:
+		e.runCommand("docker compose restart " + it.name)
+	default:
+		e.runCommand("docker restart " + it.id)
+	}
+}
+
+func (e *Editor) dockerRebuild() {
+	it, ok := e.dockerSelected()
+	if !ok {
+		return
+	}
+	if it.tab != dockCompose {
+		e.message = "rebuild é para serviços do compose (aba Compose)"
+		return
+	}
+	e.runCommand("docker compose up -d --build " + it.name)
+}
+
+func (e *Editor) dockerRemove() {
+	it, ok := e.dockerSelected()
+	if !ok {
+		return
+	}
+	switch it.tab {
+	case dockImages:
+		e.openPrompt(fmt.Sprintf("remover imagem %s? (s/N): ", it.name), "", func(ans string) {
+			if dockerConfirmed(ans) {
+				e.runCommand("docker rmi " + it.id)
+			}
+		})
+	case dockCompose:
+		e.openPrompt(fmt.Sprintf("remover serviço %q? (s/N): ", it.name), "", func(ans string) {
+			if dockerConfirmed(ans) {
+				e.runCommand("docker compose rm -sf " + it.name)
+			}
+		})
+	default:
+		rm := "docker rm " + it.id
+		if strings.HasPrefix(it.state, "running") {
+			rm = "docker rm -f " + it.id
+		}
+		e.openPrompt(fmt.Sprintf("remover container %q? (s/N): ", it.name), "", func(ans string) {
+			if dockerConfirmed(ans) {
+				e.runCommand(rm)
+			}
+		})
+	}
+}
+
+func dockerConfirmed(ans string) bool {
+	a := strings.ToLower(strings.TrimSpace(ans))
+	return a == "s" || a == "sim" || a == "y"
 }
 
 func dockerStateColor(state string) render.Color {
@@ -224,9 +363,9 @@ func (e *Editor) dockerPanel(rows, width int) []render.StyledLine {
 		}
 		header = append(header, render.Span{Text: " " + name + " ", Style: style})
 	}
-	right := " Tab troca · q fecha "
+	right := " s·start/stop r·restart l·logs d·remove · Tab · q "
 	if !d.updated.IsZero() {
-		right = fmt.Sprintf(" atualizado há %ds · Tab troca · q fecha ", int(time.Since(d.updated).Seconds()))
+		right = fmt.Sprintf(" há %ds · s·start/stop r·restart l·logs d·remove · Tab · q ", int(time.Since(d.updated).Seconds()))
 	}
 	rightSpan := render.Span{Text: right, Style: bar}
 	if gap := width - header.Width() - (render.StyledLine{rightSpan}).Width(); gap > 0 {

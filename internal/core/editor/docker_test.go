@@ -8,6 +8,7 @@ import (
 
 	"github.com/gabrielcunha1232/gotextforge/internal/core/docker"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/input"
+	"github.com/gabrielcunha1232/gotextforge/internal/core/runner"
 )
 
 const sampleDockerPS = `{"ID":"abc123","Image":"postgres:16","Names":"db","Ports":"0.0.0.0:5432->5432/tcp","State":"running","Status":"Up 2 hours"}
@@ -117,6 +118,148 @@ func TestDockerToggleKeybinding(t *testing.T) {
 	feed('o')
 	if ed.dock.open {
 		t.Fatalf("Espaço d o de novo deveria fechar o painel")
+	}
+}
+
+func TestDockerActions(t *testing.T) {
+	ed := New(nil, "t.go")
+	defer ed.Close()
+	ed.HandleEvent(input.NewResizeEvent(80, 30))
+
+	var cmds []string
+	ed.start = func(command, dir string, notify func(bool)) (*runner.Job, error) {
+		cmds = append(cmds, command)
+		return nil, nil
+	}
+
+	// estado montado direto, sem goroutine (determinístico)
+	setup := func() {
+		ed.dock = dockerState{
+			open: true,
+			containers: []docker.Container{
+				{ID: "abc123", Name: "db", State: "running", Status: "Up 2 hours"},
+				{ID: "def456", Name: "worker", State: "exited", Status: "Exited (1)"},
+			},
+			services: []docker.ComposeService{
+				{Name: "proj-api-1", Service: "api", State: "running"},
+			},
+			images: []docker.Image{{ID: "sha256:aaa", Repository: "postgres", Tag: "16"}},
+		}
+		ed.mode = ModeDocker
+	}
+	feed := func(r rune) {
+		ed.HandleEvent(input.Event{Kind: input.EventKey, Key: input.Key{Code: input.KeyRune, Rune: r}})
+	}
+	tab := func() { feedKey(ed, input.KeyTab) }
+	last := func() string {
+		if len(cmds) == 0 {
+			return ""
+		}
+		return cmds[len(cmds)-1]
+	}
+
+	cases := []struct {
+		name string
+		do   func()
+		want string
+	}{
+		{"stop container running", func() { setup(); feed('s') }, "docker stop abc123"},
+		{"start container parado", func() { setup(); feed('j'); feed('s') }, "docker start def456"},
+		{"restart container", func() { setup(); feed('r') }, "docker restart abc123"},
+		{"logs container", func() { setup(); feed('l') }, "docker logs -f --tail 200 abc123"},
+		{"stop serviço compose", func() { setup(); tab(); feed('s') }, "docker compose stop api"},
+		{"restart serviço compose", func() { setup(); tab(); feed('r') }, "docker compose restart api"},
+		{"rebuild serviço compose", func() { setup(); tab(); feed('b') }, "docker compose up -d --build api"},
+	}
+	for _, c := range cases {
+		cmds = cmds[:0]
+		c.do()
+		if last() != c.want {
+			t.Errorf("%s: comando = %q, esperava %q", c.name, last(), c.want)
+		}
+	}
+}
+
+func feedKey(ed *Editor, code input.KeyCode) {
+	ed.HandleEvent(input.Event{Kind: input.EventKey, Key: input.Key{Code: code}})
+}
+
+func TestDockerRebuildOnlyCompose(t *testing.T) {
+	ed := New(nil, "t.go")
+	defer ed.Close()
+	ed.HandleEvent(input.NewResizeEvent(80, 30))
+	var cmds []string
+	ed.start = func(command, dir string, notify func(bool)) (*runner.Job, error) {
+		cmds = append(cmds, command)
+		return nil, nil
+	}
+	ed.dock = dockerState{open: true, containers: []docker.Container{{ID: "abc", Name: "db", State: "running"}}}
+	ed.mode = ModeDocker
+	ed.HandleEvent(input.Event{Kind: input.EventKey, Key: input.Key{Code: input.KeyRune, Rune: 'b'}})
+	if len(cmds) != 0 {
+		t.Errorf("rebuild num container não deveria rodar nada, rodou %v", cmds)
+	}
+	if !strings.Contains(ed.Frame().Status.Text(), "Compose") {
+		t.Errorf("deveria avisar que rebuild é do Compose, status: %q", ed.Frame().Status.Text())
+	}
+}
+
+func TestDockerRemoveConfirm(t *testing.T) {
+	ed := New(nil, "t.go")
+	defer ed.Close()
+	ed.HandleEvent(input.NewResizeEvent(80, 30))
+	var cmds []string
+	ed.start = func(command, dir string, notify func(bool)) (*runner.Job, error) {
+		cmds = append(cmds, command)
+		return nil, nil
+	}
+	ed.dock = dockerState{open: true, containers: []docker.Container{{ID: "abc", Name: "db", State: "running"}}}
+	ed.mode = ModeDocker
+
+	// 'd' abre a confirmação (não roda nada ainda)
+	ed.HandleEvent(input.Event{Kind: input.EventKey, Key: input.Key{Code: input.KeyRune, Rune: 'd'}})
+	if ed.mode != ModePrompt {
+		t.Fatalf("'d' deveria abrir o prompt de confirmação, mode=%v", ed.mode)
+	}
+	if len(cmds) != 0 {
+		t.Fatalf("nada deveria rodar antes de confirmar, rodou %v", cmds)
+	}
+	// responde 's' e Enter → container running usa rm -f
+	ed.HandleEvent(input.Event{Kind: input.EventKey, Key: input.Key{Code: input.KeyRune, Rune: 's'}})
+	feedKey(ed, input.KeyEnter)
+	if len(cmds) != 1 || cmds[0] != "docker rm -f abc" {
+		t.Fatalf("esperava 'docker rm -f abc' após confirmar, veio %v", cmds)
+	}
+
+	// agora negando: 'n' não roda
+	cmds = nil
+	ed.dock = dockerState{open: true, containers: []docker.Container{{ID: "xyz", Name: "db2", State: "exited"}}}
+	ed.mode = ModeDocker
+	ed.HandleEvent(input.Event{Kind: input.EventKey, Key: input.Key{Code: input.KeyRune, Rune: 'd'}})
+	ed.HandleEvent(input.Event{Kind: input.EventKey, Key: input.Key{Code: input.KeyRune, Rune: 'n'}})
+	feedKey(ed, input.KeyEnter)
+	if len(cmds) != 0 {
+		t.Fatalf("negar não deveria remover nada, rodou %v", cmds)
+	}
+}
+
+func TestDockerExecMessage(t *testing.T) {
+	ed := New(nil, "t.go")
+	defer ed.Close()
+	ed.HandleEvent(input.NewResizeEvent(80, 30))
+	var cmds []string
+	ed.start = func(command, dir string, notify func(bool)) (*runner.Job, error) {
+		cmds = append(cmds, command)
+		return nil, nil
+	}
+	ed.dock = dockerState{open: true, containers: []docker.Container{{ID: "abc", Name: "db", State: "running"}}}
+	ed.mode = ModeDocker
+	ed.HandleEvent(input.Event{Kind: input.EventKey, Key: input.Key{Code: input.KeyRune, Rune: 'x'}})
+	if len(cmds) != 0 {
+		t.Errorf("'x' não deveria rodar nada, rodou %v", cmds)
+	}
+	if !strings.Contains(ed.Frame().Status.Text(), "terminal") {
+		t.Errorf("'x' deveria mandar usar o terminal, status: %q", ed.Frame().Status.Text())
 	}
 }
 
