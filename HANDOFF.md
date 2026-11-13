@@ -2,7 +2,9 @@
 
 > Documento de contexto para qualquer sessão futura (nova conversa de IA ou retomada depois de pausa). **Leia este arquivo antes de tudo**, depois o `ROADMAP.md`.
 
-## Estado atual (atualizado em 2026-11-12)
+## Estado atual (atualizado em 2026-11-13)
+
+> **Para a próxima sessão:** comece pela seção "▶ Próxima sessão: painel Docker", mais abaixo.
 
 **Fase 1 (terminal) concluída: MS0 a MS6.** O editor abre um ou vários arquivos pela linha de comando (cada um vira uma aba), ou sem argumento mostra uma tela inicial com logo, no terminal (Bubble Tea v2). Recursos atuais:
 - **Vim (MS4, engine em `internal/core/engine`):**
@@ -39,7 +41,7 @@ O critério do MS2 foi verificado de ponta a ponta: o editor modifica o `main.go
 
 Arquivos `.go` têm syntax highlight (MS3): palavras-chave, strings, números, comentários, identificadores predeclarados e nomes de função, com comentários de bloco e raw strings que atravessam linhas tratados corretamente.
 
-**Próximo:** Fase 2, o desktop. O MS7 é um spike descartável: um `<canvas>` no Wails v3 desenhando o mesmo `render.Frame`, com o critério "digitar sem lag num arquivo de 5 mil linhas". Antes disso, pode valer fechar as pendências da fase 1 listadas em "Próximos passos".
+**Próximo:** o painel Docker (veja a seção "▶ Próxima sessão"). Depois dele, a fase 2 (desktop, MS7: spike do canvas no Wails v3).
 
 ### Estrutura real (difere do ROADMAP, que ainda mostra `core/` na raiz)
 
@@ -127,8 +129,42 @@ O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda
    - ~~Milestone 5~~ ✅. O critério ("erros do compilador em tempo real enquanto digita") está verificado com o gopls real em `editor/gopls_integration_test.go`.
    - O que ficou fora do MS5: `gd` (ir para a definição), renomear, formatar ao salvar, sync incremental (hoje o texto inteiro vai a cada mudança, o que é ok até alguns milhares de linhas) e snippets.
    - ~~Milestone 6~~ ✅: busca, abas, status line e um README pronto para mostrar.
-   - **Pendências da fase 1 (boas para o humano):** autoindent no Enter e no `o`; `:w outro.go`; `.` para repetir; modo visual; `gd` (ir para a definição); tema claro ou configurável; wcwidth para CJK/emoji (hoje 1 rune = 1 célula); `;`/`,` depois de `f`/`t`.
-   - **Próximo é a fase 2 (MS7), o spike do canvas no Wails.**
+   - **Pendências da fase 1 (boas para o humano):** `:w outro.go`; `.` para repetir; modo visual; `gd` (ir para a definição); tema claro ou configurável; wcwidth para CJK/emoji (hoje 1 rune = 1 célula); `;`/`,` depois de `f`/`t`. O autoindent foi feito em 2026-11-13 (`smartedit.go`).
+   - **A próxima sessão é o painel Docker** (decisão de 2026-11-13; veja "Próxima sessão" abaixo). Depois disso, a fase 2 (MS7, o spike do canvas no Wails).
+
+## ▶ Próxima sessão: painel Docker (decidido em 2026-11-13)
+
+**Decisão:** dar ao gotextforge um suporte a Docker que seja um diferencial: um painel no estilo lazydocker dentro do editor. O humano aprovou e pediu para continuar numa sessão nova, porque esta ficou longa. **Escopo aprovado: só o item 1 abaixo.** Os itens 2 e 3 são para depois, se fizer sentido.
+
+**Ambiente verificado em 2026-11-13:** Docker CLI 29.9.1, Docker Compose v5.6.0 e Docker Desktop (que precisa estar aberto; o humano abre quando for testar). Com o daemon desligado, o CLI responde `failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine`. `docker ps -a --format '{{json .}}'` e `docker images --format '{{json .}}'` devolvem um JSON por linha. Havia imagens e nenhum container.
+
+### Item 1 — painel Docker (fazer)
+```
+ DOCKER  compose: <projeto>                          atualizado há 2s
+ ● api        rodando   0.0.0.0:8080->8080   2h
+ ● postgres   rodando   5432                 2h
+ ○ worker     parado    (saiu com código 1)
+```
+- **Pacote novo `internal/core/docker`, puro, sem UI:**
+  - lê o estado pelo CLI com JSON (`docker ps -a --format '{{json .}}'`, `docker images --format '{{json .}}'`, `docker compose ps -a --format json` — confira se o compose v5 devolve um array ou um JSON por linha e aceite os dois);
+  - detecta o daemon desligado (`docker info --format '{{.ServerVersion}}'` com erro) e devolve um erro claro: "Docker Desktop não está rodando";
+  - **a execução do CLI tem de ser injetável** (`func(args ...string) ([]byte, error)`), para testar sem Docker com respostas JSON gravadas; um teste de integração com o Docker real fica pulado com `-short` ou sem daemon, no padrão dos testes do gopls.
+- **No editor:**
+  - um `ModeDocker` e um painel (pode ser uma terceira "aba" do painel de baixo, ou o mesmo lugar do terminal, alternando);
+  - abas Containers / Compose / Imagens;
+  - atualização periódica (~2 s, numa goroutine que manda eventos por `e.async`, como o runner faz) **só enquanto o painel estiver aberto**.
+- **Ações com uma tecla:** `s` start/stop, `r` restart, `l` logs (`docker logs -f --tail 200 <id>` **pelo painel de comandos que já existe**, aproveitando o salto `arquivo:linha`), `d` remove (com confirmação pelo `openPrompt`), `b` rebuild (compose up -d --build no serviço), `x` exec — que **não** é suportado (o painel não é um terminal), então mostra a mensagem dizendo para usar o terminal.
+- **Um container que saiu com erro** mostra o código de saída, e `l` abre os últimos logs.
+- **Atalho:** cuidado com o `leaderMap` (`internal/core/engine/parser.go`), que já tem `du dd dp dl` (compose up/down, ps, logs). Sugestão: `Espaço d o` abre o painel. Não pode haver uma chave que seja prefixo de outra.
+- **Segurança:** os testes não podem chamar `docker rm`/`stop` de verdade em containers do humano. Use o CLI injetado nos testes de ação; o teste de integração só lê (ps, images, info). O teste aleatório (`random_test.go`) precisa desligar o Docker, como já desliga o runner (`ed.start`).
+
+### Itens para depois (NÃO fazer agora)
+2. Highlight de `Dockerfile` e `compose.yml`, mais o LSP `docker-language-server` (o cliente LSP é genérico). Atenção: isso abre a porta para "multi-língua", que é um corte do roadmap, então decida com o humano.
+3. Um Dockerfile multi-stage pronto para Go (`Espaço d n`): imagem final pequena, cache do build e usuário sem root.
+
+### Cuidados
+- O roadmap define o projeto como "editor para Go", e a fase 2 (desktop) continua pendente. Tudo o que entrar no core também serve ao desktop depois.
+- Siga o modo de trabalho: o humano faz os commits; a IA implementa (ele tem pedido isso), testa e sugere a mensagem de commit no fim.
 4. Seguir a tabela de milestones do ROADMAP.md; cada sessão começar pedindo objetivo + critério de aceite.
 5. Pendente (do humano): atualizar a árvore do `ROADMAP.md` para `internal/`.
 
