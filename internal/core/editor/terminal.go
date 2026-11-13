@@ -248,6 +248,10 @@ func (e *Editor) receiveTerminal(terminalTick) {
 	}
 	t.done = true
 	e.refreshTree()
+	if e.dock.open && e.dock.pending {
+		e.dock.pending = false
+		e.startDockerRefresh()
+	}
 	elapsed := t.snap.Elapsed.Round(100 * time.Millisecond)
 	switch t.snap.State {
 	case runner.Succeeded:

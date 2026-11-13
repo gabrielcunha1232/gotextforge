@@ -40,7 +40,7 @@
   - abas Containers / Compose / Imagens (`Tab`/`Shift+Tab` ou ←/→), navegação `j k g G`, `q` fecha, `Esc` tira o foco;
   - atualiza a cada 2 s numa goroutine que **não toca no estado do editor** (manda `dockerSnapshot` por `e.async`, igual às goroutines do LSP), só enquanto o painel está aberto; para no fechar e no `Close()`;
   - daemon desligado mostra "Docker Desktop não está rodando";
-  - ações de uma tecla sobre o item selecionado, roteadas pelo painel de comando: `s` start/stop, `r` restart, `l` logs (`docker logs -f`, com salto `arquivo:linha`), `b` rebuild (compose up -d --build no serviço), `d` remove (confirma pelo `openPrompt`; `rm -f` se rodando), `x` avisa para usar o terminal (não é PTY).
+  - ações de uma tecla sobre o item selecionado: `s` start/stop, `r` restart, `b` rebuild (compose up -d --build) e `d` remove (confirma pelo `openPrompt`; `rm -f` se rodando) rodam em segundo plano **mantendo o painel aberto**, com ✓/✗ na status line e refresh imediato ao terminar; `l` logs (`docker logs -f`) abre o terminal e aproveita o salto `arquivo:linha`; `x` avisa para usar o terminal (não é PTY).
 - **Visual:** paleta truecolor inspirada no Tokyo Night (assume terminal escuro); números de linha relativos, com o da linha atual em laranja; destaque da linha do cursor; status line estilo lualine (modo colorido, arquivo `[+]`, comando pendente, `go`, progresso, linha:coluna); erros em vermelho; tela inicial com logo em degradê.
 
 O critério do MS2 foi verificado de ponta a ponta: o editor modifica o `main.go` de um módulo real, salva com `:wq`, e o `go build` e o binário rodam.
@@ -150,7 +150,7 @@ O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda
 - `internal/core/docker` puro, sem UI, sobre um `Exec` injetável; `ListContainers`, `ListImages`, `ComposePS` (aceita array ou NDJSON), `Info`/`ErrDaemonDown`. 10 casos de teste sem Docker.
 - No editor: `ModeDocker`, painel no slot de baixo exclusivo com o terminal, refresh de 2 s por goroutine via `e.async`, abas, navegação, e as ações `s/r/l/b/d/x` roteadas pelo painel de comando. `dockerExec func(dir string) docker.Exec` injetável; o `random_test` faz `ed.dockerExec = nil`.
 - **Decisões tomadas durante a implementação:** atalho `Espaço d o` (sem conflito de prefixo com `du/dd/dp/dl`); a goroutine busca os três (containers/imagens/compose) a cada ciclo; o erro do `compose ps` sem `compose.yml` é ignorado (aba Compose fica vazia, não polui); `Info` engole o erro cru do CLI e devolve só `ErrDaemonDown`.
-- **Tradeoff de UX conhecido (candidato a melhoria):** toda ação roda via `runCommand`, que mostra o terminal e fecha o painel Docker. Para start/stop isso é abrupto; a melhoria seria rodar em segundo plano mantendo o painel e forçar um refresh ao terminar.
+- **Comportamento das ações:** `s/r/b/d` rodam em **segundo plano mantendo o painel Docker aberto** (`runDockerAction`, que usa o `runner` mas não abre o terminal); o resultado ✓/✗ aparece na status line, e ao terminar o painel é atualizado na hora (`e.dock.pending` → `startDockerRefresh` em `receiveTerminal`). Só `l` (logs, streaming) abre o terminal via `runCommand`.
 - **Pendência pequena (não feita):** o teste de integração com o Docker real (ps/images/info, pulável com `-short`, no padrão do gopls) não foi escrito — só os testes com `Exec` falso. Fica como opcional.
 
 ### Escopo original aprovado (mantido como referência do que foi feito)

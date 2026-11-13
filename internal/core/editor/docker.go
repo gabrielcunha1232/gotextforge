@@ -33,6 +33,7 @@ type dockerState struct {
 	updated    time.Time
 	stop       chan struct{}
 	gen        int
+	pending    bool
 }
 
 type dockerSnapshot struct {
@@ -235,6 +236,24 @@ func (e *Editor) dockerSelected() (dockerItem, bool) {
 	return dockerItem{tab: d.tab}, false
 }
 
+// runDockerAction roda um comando docker em segundo plano SEM abrir o terminal
+// (o painel Docker continua visível). O resultado ✓/✗ aparece na status line
+// via receiveTerminal, e ao terminar o painel é atualizado na hora.
+func (e *Editor) runDockerAction(command string) {
+	if e.term.job != nil {
+		e.term.job.Cancel()
+	}
+	dir := e.terminalDir()
+	job, err := e.start(command, dir, e.notifyTerminal)
+	if err != nil {
+		e.message = "erro ao executar: " + err.Error()
+		return
+	}
+	e.term = terminal{open: e.term.open, job: job, follow: true, last: command, dir: dir, cwd: e.term.cwd, prev: e.term.prev}
+	e.dock.pending = true
+	e.message = "$ " + command
+}
+
 func (e *Editor) dockerLogs() {
 	it, ok := e.dockerSelected()
 	if !ok {
@@ -264,10 +283,10 @@ func (e *Editor) dockerStartStop() {
 		verb = "stop"
 	}
 	if it.tab == dockCompose {
-		e.runCommand("docker compose " + verb + " " + it.name)
+		e.runDockerAction("docker compose " + verb + " " + it.name)
 		return
 	}
-	e.runCommand("docker " + verb + " " + it.id)
+	e.runDockerAction("docker " + verb + " " + it.id)
 }
 
 func (e *Editor) dockerRestart() {
@@ -279,9 +298,9 @@ func (e *Editor) dockerRestart() {
 	case dockImages:
 		e.message = "imagens não reiniciam; selecione um container"
 	case dockCompose:
-		e.runCommand("docker compose restart " + it.name)
+		e.runDockerAction("docker compose restart " + it.name)
 	default:
-		e.runCommand("docker restart " + it.id)
+		e.runDockerAction("docker restart " + it.id)
 	}
 }
 
@@ -294,7 +313,7 @@ func (e *Editor) dockerRebuild() {
 		e.message = "rebuild é para serviços do compose (aba Compose)"
 		return
 	}
-	e.runCommand("docker compose up -d --build " + it.name)
+	e.runDockerAction("docker compose up -d --build " + it.name)
 }
 
 func (e *Editor) dockerRemove() {
@@ -306,13 +325,13 @@ func (e *Editor) dockerRemove() {
 	case dockImages:
 		e.openPrompt(fmt.Sprintf("remover imagem %s? (s/N): ", it.name), "", func(ans string) {
 			if dockerConfirmed(ans) {
-				e.runCommand("docker rmi " + it.id)
+				e.runDockerAction("docker rmi " + it.id)
 			}
 		})
 	case dockCompose:
 		e.openPrompt(fmt.Sprintf("remover serviço %q? (s/N): ", it.name), "", func(ans string) {
 			if dockerConfirmed(ans) {
-				e.runCommand("docker compose rm -sf " + it.name)
+				e.runDockerAction("docker compose rm -sf " + it.name)
 			}
 		})
 	default:
@@ -322,7 +341,7 @@ func (e *Editor) dockerRemove() {
 		}
 		e.openPrompt(fmt.Sprintf("remover container %q? (s/N): ", it.name), "", func(ans string) {
 			if dockerConfirmed(ans) {
-				e.runCommand(rm)
+				e.runDockerAction(rm)
 			}
 		})
 	}

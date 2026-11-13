@@ -180,6 +180,24 @@ func TestDockerActions(t *testing.T) {
 	}
 }
 
+func TestDockerActionKeepsPanelOpen(t *testing.T) {
+	ed := New(nil, "t.go")
+	defer ed.Close()
+	ed.HandleEvent(input.NewResizeEvent(80, 30))
+	ed.start = func(string, string, func(bool)) (*runner.Job, error) { return nil, nil }
+	ed.dock = dockerState{open: true, containers: []docker.Container{{ID: "abc", Name: "db", State: "running"}}}
+	ed.mode = ModeDocker
+
+	ed.HandleEvent(input.Event{Kind: input.EventKey, Key: input.Key{Code: input.KeyRune, Rune: 's'}})
+
+	if !ed.dock.open || ed.mode != ModeDocker {
+		t.Errorf("ação mutante deveria manter o painel aberto e o foco nele; open=%v mode=%v", ed.dock.open, ed.mode)
+	}
+	if !ed.dock.pending {
+		t.Errorf("ação deveria marcar refresh pendente")
+	}
+}
+
 func feedKey(ed *Editor, code input.KeyCode) {
 	ed.HandleEvent(input.Event{Kind: input.EventKey, Key: input.Key{Code: code}})
 }
