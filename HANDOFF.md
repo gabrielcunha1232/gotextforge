@@ -4,7 +4,7 @@
 
 ## Estado atual (atualizado em 2026-11-13)
 
-> **Para a próxima sessão:** comece pela seção "▶ Próxima sessão: painel Docker", mais abaixo.
+> **Para a próxima sessão:** o painel Docker (item 1) está **concluído** — veja a seção "✓ Painel Docker" mais abaixo. O próximo trabalho é a **fase 2 (desktop, MS7: spike do canvas no Wails v3)**, salvo se decidir pelos itens 2/3 do Docker antes.
 
 **Fase 1 (terminal) concluída: MS0 a MS6.** O editor abre um ou vários arquivos pela linha de comando (cada um vira uma aba), ou sem argumento mostra uma tela inicial com logo, no terminal (Bubble Tea v2). Recursos atuais:
 - **Vim (MS4, engine em `internal/core/engine`):**
@@ -35,13 +35,19 @@
   - a saída aparece em streaming num painel embaixo;
   - Enter num `arquivo:linha:col` abre o arquivo (se não estiver na pasta, procura pelo sufixo do caminho, porque o `go test` imprime caminhos relativos ao pacote);
   - `n`/`N` pulam entre erros, Ctrl+c cancela (mata a **árvore** de processos: `taskkill /T` no Windows, process group no Unix), `r` repete.
+- **Painel Docker (`internal/core/docker` + `editor/docker.go`, concluído em 2026-11-13):**
+  - `Espaço d o` abre um painel estilo lazydocker no slot de baixo (exclusivo com o terminal, alternando);
+  - abas Containers / Compose / Imagens (`Tab`/`Shift+Tab` ou ←/→), navegação `j k g G`, `q` fecha, `Esc` tira o foco;
+  - atualiza a cada 2 s numa goroutine que **não toca no estado do editor** (manda `dockerSnapshot` por `e.async`, igual às goroutines do LSP), só enquanto o painel está aberto; para no fechar e no `Close()`;
+  - daemon desligado mostra "Docker Desktop não está rodando";
+  - ações de uma tecla sobre o item selecionado, roteadas pelo painel de comando: `s` start/stop, `r` restart, `l` logs (`docker logs -f`, com salto `arquivo:linha`), `b` rebuild (compose up -d --build no serviço), `d` remove (confirma pelo `openPrompt`; `rm -f` se rodando), `x` avisa para usar o terminal (não é PTY).
 - **Visual:** paleta truecolor inspirada no Tokyo Night (assume terminal escuro); números de linha relativos, com o da linha atual em laranja; destaque da linha do cursor; status line estilo lualine (modo colorido, arquivo `[+]`, comando pendente, `go`, progresso, linha:coluna); erros em vermelho; tela inicial com logo em degradê.
 
 O critério do MS2 foi verificado de ponta a ponta: o editor modifica o `main.go` de um módulo real, salva com `:wq`, e o `go build` e o binário rodam.
 
 Arquivos `.go` têm syntax highlight (MS3): palavras-chave, strings, números, comentários, identificadores predeclarados e nomes de função, com comentários de bloco e raw strings que atravessam linhas tratados corretamente.
 
-**Próximo:** o painel Docker (veja a seção "▶ Próxima sessão"). Depois dele, a fase 2 (desktop, MS7: spike do canvas no Wails v3).
+**Próximo:** a fase 2 (desktop, MS7: spike do canvas no Wails v3). O painel Docker (item 1) foi concluído em 2026-11-13.
 
 ### Estrutura real (difere do ROADMAP, que ainda mostra `core/` na raiz)
 
@@ -52,6 +58,9 @@ internal/core/render/       Frame{Lines, Cursor ScreenPos, CursorShape, Status S
 internal/core/buffer/       [][]rune somente leitura; Load(io.Reader); LineEnding (LF/CRLF); HasBOM; ErrUTF16
 internal/core/view/         Viewport (clamp, EnsureVisible); layout único → FormatLine (texto) e RenderLine (spans com estilo); ScreenCol
 internal/core/syntax/       HighlightLine(linha, estado) via go/scanner; Cache de estado por linha + NextState (atalho exato)
+internal/core/docker/       puro, sem UI: Client sobre um Exec injetável (func(args...) ([]byte,error));
+                            ListContainers/ListImages (ps/images --format {{json .}}, NDJSON via parseLines genérico),
+                            ComposePS (compose ps --format json, aceita array OU NDJSON), Info/ErrDaemonDown
 internal/core/storage/      Save atômico (tmp + Sync + Rename)
 internal/core/lsp/          cliente LSP próprio (D5): jsonrpc.go (Content-Length, ids, pedidos do servidor), protocol.go (tipos,
                             UTF-16 ↔ rune SÓ aqui (D3), URIs no Windows), client.go (inicia o gopls de forma assíncrona, fila sem bloquear,
@@ -60,7 +69,8 @@ internal/core/engine/       vim: Parser (gramática + estado pending, Pending() 
 internal/core/editor/       editor.go (estado/eventos), normal.go (executa comandos da engine, registrador, p/J/r),
                             insert.go, command.go (:e :w :q :qa :wa :bn...), ui.go (Frame: abas, gutter, cursorline, statusline), intro.go, theme.go,
                             tabs.go (document por aba, OpenFile, layout, tabline), search.go (/ ? n N * #, destaque),
-                            lsp.go (LanguageClient, HandleAsync), diagnostics.go, popup.go (hover/janelas), completion.go
+                            lsp.go (LanguageClient, HandleAsync), diagnostics.go, popup.go (hover/janelas), completion.go,
+                            terminal.go (painel de comando + bottomRows), docker.go (ModeDocker, painel, refresh, ações)
 internal/frontend/tui/      TranslateKey (tea → input.Key), RenderFrame (Frame → string com SGR ANSI direto), model
 ```
 
@@ -130,15 +140,24 @@ O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda
    - O que ficou fora do MS5: `gd` (ir para a definição), renomear, formatar ao salvar, sync incremental (hoje o texto inteiro vai a cada mudança, o que é ok até alguns milhares de linhas) e snippets.
    - ~~Milestone 6~~ ✅: busca, abas, status line e um README pronto para mostrar.
    - **Pendências da fase 1 (boas para o humano):** `:w outro.go`; `.` para repetir; modo visual; `gd` (ir para a definição); tema claro ou configurável; wcwidth para CJK/emoji (hoje 1 rune = 1 célula); `;`/`,` depois de `f`/`t`. O autoindent foi feito em 2026-11-13 (`smartedit.go`).
-   - **A próxima sessão é o painel Docker** (decisão de 2026-11-13; veja "Próxima sessão" abaixo). Depois disso, a fase 2 (MS7, o spike do canvas no Wails).
+   - ~~Painel Docker (item 1)~~ ✅ concluído em 2026-11-13 (veja "✓ Painel Docker" abaixo). **A próxima sessão é a fase 2 (MS7, o spike do canvas no Wails)**, salvo se optar pelos itens 2/3 do Docker antes.
 
-## ▶ Próxima sessão: painel Docker (decidido em 2026-11-13)
+## ✓ Painel Docker (item 1 — CONCLUÍDO em 2026-11-13)
 
-**Decisão:** dar ao gotextforge um suporte a Docker que seja um diferencial: um painel no estilo lazydocker dentro do editor. O humano aprovou e pediu para continuar numa sessão nova, porque esta ficou longa. **Escopo aprovado: só o item 1 abaixo.** Os itens 2 e 3 são para depois, se fizer sentido.
+**Decisão:** dar ao gotextforge um suporte a Docker que seja um diferencial: um painel no estilo lazydocker dentro do editor. **Escopo aprovado: só o item 1.** Os itens 2 e 3 (mais abaixo) são para depois, se fizer sentido.
+
+**Status:** o item 1 foi implementado inteiro (pacote puro + painel + ações), com `go test ./...`, `go vet` e `gofmt` limpos. Como foi feito, resumo:
+- `internal/core/docker` puro, sem UI, sobre um `Exec` injetável; `ListContainers`, `ListImages`, `ComposePS` (aceita array ou NDJSON), `Info`/`ErrDaemonDown`. 10 casos de teste sem Docker.
+- No editor: `ModeDocker`, painel no slot de baixo exclusivo com o terminal, refresh de 2 s por goroutine via `e.async`, abas, navegação, e as ações `s/r/l/b/d/x` roteadas pelo painel de comando. `dockerExec func(dir string) docker.Exec` injetável; o `random_test` faz `ed.dockerExec = nil`.
+- **Decisões tomadas durante a implementação:** atalho `Espaço d o` (sem conflito de prefixo com `du/dd/dp/dl`); a goroutine busca os três (containers/imagens/compose) a cada ciclo; o erro do `compose ps` sem `compose.yml` é ignorado (aba Compose fica vazia, não polui); `Info` engole o erro cru do CLI e devolve só `ErrDaemonDown`.
+- **Tradeoff de UX conhecido (candidato a melhoria):** toda ação roda via `runCommand`, que mostra o terminal e fecha o painel Docker. Para start/stop isso é abrupto; a melhoria seria rodar em segundo plano mantendo o painel e forçar um refresh ao terminar.
+- **Pendência pequena (não feita):** o teste de integração com o Docker real (ps/images/info, pulável com `-short`, no padrão do gopls) não foi escrito — só os testes com `Exec` falso. Fica como opcional.
+
+### Escopo original aprovado (mantido como referência do que foi feito)
 
 **Ambiente verificado em 2026-11-13:** Docker CLI 29.9.1, Docker Compose v5.6.0 e Docker Desktop (que precisa estar aberto; o humano abre quando for testar). Com o daemon desligado, o CLI responde `failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine`. `docker ps -a --format '{{json .}}'` e `docker images --format '{{json .}}'` devolvem um JSON por linha. Havia imagens e nenhum container.
 
-### Item 1 — painel Docker (fazer)
+### Item 1 — painel Docker (FEITO; especificação original abaixo)
 ```
  DOCKER  compose: <projeto>                          atualizado há 2s
  ● api        rodando   0.0.0.0:8080->8080   2h
@@ -206,4 +225,8 @@ O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda
 - **Um único canal assíncrono:** `editor.Async()` agora é `<-chan any`, criado pelo próprio editor. O gopls (por meio de uma goroutine `forward`) e o runner (`terminalTick`) mandam eventos nele.
 - **Runner injetável** (`editor.start`, como o `save` e o `load`). O teste aleatório desativa o runner: com Espaço e letras aleatórias, ele poderia montar e executar texto arbitrário no shell.
 - **Sair é decisão do core**: `editor.ShouldQuit()`. O TUI só obedece; ele não trata mais o Ctrl+c.
+- **Painel Docker exclusivo com o terminal:** os dois dividem o único slot de baixo (`bottomRows()` + `bottomPanelHeight()`). `e.dock.open` e `e.term.open` podem coexistir, mas o `Frame` só desenha o Docker quando `dock.open`, e `terminalRows()` devolve 0 nesse caso. Abrir o terminal (`openTerminal`, chamado por todo `runCommand`) fecha o painel Docker — é o que torna as ações `l/s/r/...` visíveis no terminal.
+- **Goroutine do Docker não toca no editor** (mesma regra do LSP): `startDockerRefresh` captura o `projectRoot()` num string, constrói um `*docker.Client` e passa tudo para `dockerRefreshLoop`, que só chama o CLI e manda `dockerSnapshot` por `e.async`. `gen` (geração) descarta snapshots de um painel já fechado/reaberto. `stopDockerRefresh` fecha o canal de stop; chamado no `closeDocker` e no `Close()`.
+- **`dockerExec` injetável** (`func(dir string) docker.Exec`, como `start`/`save`/`load`): o padrão é o `docker` real com `cmd.Dir=dir`; os testes injetam um falso com JSON gravado; o `random_test` faz `ed.dockerExec = nil` (senão `Espaço d o` aleatório dispararia `docker` de verdade). Com `nil`, `openDocker` sai cedo e o painel nem abre.
+- **Atalho `do`:** adicionado ao `leaderMap`. Nenhuma chave do mapa pode ser prefixo de outra; `do` convive com `du/dd/dp/dl` porque todas têm 2 letras.
 - **Undo mora no buffer** (`history.go`): cada `Insert`/`Delete` é registrado. O editor agrupa as mudanças com `BeginChange`/`EndChange`: um comando do modo normal é um passo, e uma sessão inteira de insert (do `i` ao Esc) também é um passo. O undo devolve o cursor para onde ele estava **antes** do comando. O `Modified()` compara o id do topo da pilha com o id salvo, então desfazer até o estado salvo tira o `[+]`.
