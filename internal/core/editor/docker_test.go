@@ -2,6 +2,9 @@ package editor
 
 import (
 	"errors"
+	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -10,6 +13,20 @@ import (
 	"github.com/gabrielcunha1232/gotextforge/internal/core/input"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/runner"
 )
+
+type recordingSaver struct{ files map[string]string }
+
+func (r *recordingSaver) save(path string, src io.WriterTo) error {
+	var sb strings.Builder
+	if _, err := src.WriteTo(&sb); err != nil {
+		return err
+	}
+	if r.files == nil {
+		r.files = map[string]string{}
+	}
+	r.files[filepath.Base(path)] = sb.String()
+	return nil
+}
 
 const sampleDockerPS = `{"ID":"abc123","Image":"postgres:16","Names":"db","Ports":"0.0.0.0:5432->5432/tcp","State":"running","Status":"Up 2 hours"}
 {"ID":"def456","Image":"myapp/worker","Names":"worker","Ports":"","State":"exited","Status":"Exited (1) 3 minutes ago"}
@@ -278,6 +295,75 @@ func TestDockerExecMessage(t *testing.T) {
 	}
 	if !strings.Contains(ed.Frame().Status.Text(), "terminal") {
 		t.Errorf("'x' deveria mandar usar o terminal, status: %q", ed.Frame().Status.Text())
+	}
+}
+
+func TestDockerScaffold(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module github.com/me/coolapp\n\ngo 1.27.3\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ed := New(nil, "")
+	defer ed.Close()
+	ed.SetRoot(root)
+	rec := &recordingSaver{}
+	ed.save = rec.save
+	ed.HandleEvent(input.NewResizeEvent(80, 30))
+
+	// via o atalho Espaço d n
+	for _, r := range []rune{' ', 'd', 'n'} {
+		ed.HandleEvent(input.Event{Kind: input.EventKey, Key: input.Key{Code: input.KeyRune, Rune: r}})
+	}
+
+	df, ok := rec.files["Dockerfile"]
+	if !ok {
+		t.Fatalf("Dockerfile não foi gerado (arquivos: %v)", rec.files)
+	}
+	for _, want := range []string{
+		"FROM golang:1.27 AS build",
+		"COPY go.mod go.sum* ./",
+		"distroless/static-debian12:nonroot",
+		"USER nonroot:nonroot",
+		"/bin/coolapp",
+		"cmd/coolapp",
+	} {
+		if !strings.Contains(df, want) {
+			t.Errorf("Dockerfile não contém %q:\n%s", want, df)
+		}
+	}
+	comp, ok := rec.files["compose.yml"]
+	if !ok {
+		t.Fatal("compose.yml não foi gerado")
+	}
+	if !strings.Contains(comp, "coolapp:") || !strings.Contains(comp, "build: .") {
+		t.Errorf("compose.yml inesperado:\n%s", comp)
+	}
+}
+
+func TestDockerScaffoldSkipsExisting(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module app\ngo 1.27\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "Dockerfile"), []byte("FROM scratch\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ed := New(nil, "")
+	defer ed.Close()
+	ed.SetRoot(root)
+	rec := &recordingSaver{}
+	ed.save = rec.save
+
+	ed.scaffoldDocker()
+
+	if _, ok := rec.files["Dockerfile"]; ok {
+		t.Error("não deveria sobrescrever um Dockerfile existente")
+	}
+	if _, ok := rec.files["compose.yml"]; !ok {
+		t.Error("deveria gerar o compose.yml que faltava")
+	}
+	if !strings.Contains(ed.Frame().Status.Text(), "já existia") {
+		t.Errorf("status deveria avisar que pulou o existente: %q", ed.Frame().Status.Text())
 	}
 }
 

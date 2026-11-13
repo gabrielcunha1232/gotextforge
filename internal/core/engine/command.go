@@ -100,6 +100,7 @@ const (
 	ActionTerminalRerun
 	ActionRun
 	ActionDockerToggle
+	ActionDockerNew
 )
 
 type Command struct {

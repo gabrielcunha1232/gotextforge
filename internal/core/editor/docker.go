@@ -2,10 +2,13 @@ package editor
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/gabrielcunha1232/gotextforge/internal/core/buffer"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/docker"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/input"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/render"
@@ -350,6 +353,127 @@ func (e *Editor) dockerRemove() {
 func dockerConfirmed(ans string) bool {
 	a := strings.ToLower(strings.TrimSpace(ans))
 	return a == "s" || a == "sim" || a == "y"
+}
+
+// scaffoldDocker gera um Dockerfile multi-stage para Go e um compose.yml
+// inicial na raiz do projeto, sem sobrescrever arquivos que já existem.
+func (e *Editor) scaffoldDocker() {
+	root := e.projectRoot()
+	name := goModuleName(root)
+	files := []struct{ name, content string }{
+		{"Dockerfile", dockerfileTemplate(name, goModVersion(root))},
+		{"compose.yml", composeTemplate(name)},
+	}
+	var created, skipped []string
+	firstCreated := ""
+	for _, f := range files {
+		path := filepath.Join(root, f.name)
+		if _, err := os.Stat(path); err == nil {
+			skipped = append(skipped, f.name)
+			continue
+		}
+		buf, err := buffer.Load(strings.NewReader(f.content))
+		if err != nil {
+			e.message = "erro ao gerar " + f.name + ": " + err.Error()
+			return
+		}
+		if err := e.save(path, buf); err != nil {
+			e.message = "erro ao gravar " + f.name + ": " + err.Error()
+			return
+		}
+		created = append(created, f.name)
+		if firstCreated == "" {
+			firstCreated = path
+		}
+	}
+	e.refreshTree()
+	if firstCreated != "" {
+		e.OpenFile(firstCreated)
+	}
+	switch {
+	case len(created) == 0:
+		e.message = "Dockerfile e compose.yml já existem (nada gerado)"
+	case len(skipped) == 0:
+		e.message = "gerado: " + strings.Join(created, ", ")
+	default:
+		e.message = "gerado: " + strings.Join(created, ", ") + " · já existia: " + strings.Join(skipped, ", ")
+	}
+}
+
+func goModuleName(root string) string {
+	data, err := os.ReadFile(filepath.Join(root, "go.mod"))
+	if err != nil {
+		return "app"
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if rest, ok := strings.CutPrefix(strings.TrimSpace(line), "module "); ok {
+			if base := filepath.Base(strings.TrimSpace(rest)); base != "" && base != "." && base != string(filepath.Separator) {
+				return base
+			}
+		}
+	}
+	return "app"
+}
+
+func goModVersion(root string) string {
+	data, err := os.ReadFile(filepath.Join(root, "go.mod"))
+	if err != nil {
+		return "1.27"
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if rest, ok := strings.CutPrefix(strings.TrimSpace(line), "go "); ok {
+			if parts := strings.Split(strings.TrimSpace(rest), "."); len(parts) >= 2 {
+				return parts[0] + "." + parts[1]
+			}
+		}
+	}
+	return "1.27"
+}
+
+func dockerfileTemplate(name, goVer string) string {
+	return `# syntax=docker/dockerfile:1
+
+# ---- build ----
+FROM golang:` + goVer + ` AS build
+WORKDIR /src
+
+# baixa as dependências primeiro: esta camada só é refeita quando go.mod/go.sum mudam
+COPY go.mod go.sum* ./
+RUN go mod download
+
+COPY . .
+# ajuste o caminho do pacote main se ele não estiver na raiz (ex.: ./cmd/` + name + `)
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /bin/` + name + ` .
+
+# ---- runtime ----
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build /bin/` + name + ` /bin/` + name + `
+USER nonroot:nonroot
+ENTRYPOINT ["/bin/` + name + `"]
+`
+}
+
+func composeTemplate(name string) string {
+	return `services:
+  ` + name + `:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - EXEMPLO=valor
+    # volumes:
+    #   - ./dados:/dados
+    # depends_on:
+    #   - db
+
+# serviço de apoio de exemplo (descomente e ajuste):
+#  db:
+#    image: postgres:16
+#    environment:
+#      - POSTGRES_PASSWORD=postgres
+#    ports:
+#      - "5432:5432"
+`
 }
 
 func dockerStateColor(state string) render.Color {
