@@ -50,10 +50,7 @@ func parseLocation(line string) (file string, lineNo, col int, ok bool) {
 	return m[1], lineNo, col, lineNo > 0
 }
 
-func (e *Editor) terminalRows() int {
-	if !e.term.open {
-		return 0
-	}
+func (e *Editor) bottomPanelHeight() int {
 	rows := min(max(e.height/3, 6), 15)
 	rows = min(rows, e.height-3)
 	if rows < 2 {
@@ -62,7 +59,26 @@ func (e *Editor) terminalRows() int {
 	return rows
 }
 
+// bottomRows is the height of the single bottom panel slot, shared by the
+// terminal and the docker panel (they are mutually exclusive).
+func (e *Editor) bottomRows() int {
+	if e.dock.open || e.term.open {
+		return e.bottomPanelHeight()
+	}
+	return 0
+}
+
+func (e *Editor) terminalRows() int {
+	if !e.term.open || e.dock.open {
+		return 0
+	}
+	return e.bottomPanelHeight()
+}
+
 func (e *Editor) openTerminal(focus bool) {
+	if e.dock.open {
+		e.closeDocker()
+	}
 	if !e.term.open {
 		e.term.open = true
 		e.layout()

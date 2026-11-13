@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gabrielcunha1232/gotextforge/internal/core/buffer"
+	"github.com/gabrielcunha1232/gotextforge/internal/core/docker"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/engine"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/input"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/lsp"
@@ -26,6 +27,7 @@ const (
 	ModeExplorer
 	ModeFinder
 	ModeTerminal
+	ModeDocker
 )
 
 type SaveFunc func(path string, src io.WriterTo) error
@@ -65,41 +67,44 @@ func newDocument(buf *buffer.Buffer, path string) *document {
 
 type Editor struct {
 	*document
-	docs     []*document
-	mode     Mode
-	save     SaveFunc
-	load     LoadFunc
-	cmdline  []rune
-	message  string
-	quit     bool
-	parser   engine.Parser
-	reg      register
-	lsp      lspState
-	hover    *hoverPopup
-	comp     *completion
-	search   searchState
-	root     string
-	term     terminal
-	start    StartFunc
-	async    chan any
-	explorer explorer
-	finder   *finder
-	prompt   *prompt
-	width    int
-	height   int
+	docs       []*document
+	mode       Mode
+	save       SaveFunc
+	load       LoadFunc
+	cmdline    []rune
+	message    string
+	quit       bool
+	parser     engine.Parser
+	reg        register
+	lsp        lspState
+	hover      *hoverPopup
+	comp       *completion
+	search     searchState
+	root       string
+	term       terminal
+	start      StartFunc
+	dock       dockerState
+	dockerExec func(dir string) docker.Exec
+	async      chan any
+	explorer   explorer
+	finder     *finder
+	prompt     *prompt
+	width      int
+	height     int
 }
 
 func New(buf *buffer.Buffer, path string) *Editor {
 	doc := newDocument(buf, path)
 	e := &Editor{
-		document: doc,
-		docs:     []*document{doc},
-		save:     storage.Save,
-		load:     loadFile,
-		async:    make(chan any, 256),
-		start:    runner.Start,
-		width:    80,
-		height:   24,
+		document:   doc,
+		docs:       []*document{doc},
+		save:       storage.Save,
+		load:       loadFile,
+		async:      make(chan any, 256),
+		start:      runner.Start,
+		dockerExec: defaultDockerExec,
+		width:      80,
+		height:     24,
 	}
 	e.layout()
 	return e
@@ -146,6 +151,8 @@ func (e *Editor) HandleEvent(ev input.Event) {
 			e.handleFinderKey(ev.Key)
 		case ModeTerminal:
 			e.handleTerminalKey(ev.Key)
+		case ModeDocker:
+			e.handleDockerKey(ev.Key)
 		case ModeCommand, ModeSearch:
 			e.handleCommandKey(ev.Key)
 		default:

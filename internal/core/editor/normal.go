@@ -270,6 +270,8 @@ func (e *Editor) runAction(cmd engine.Command) {
 		e.rerunCommand()
 	case engine.ActionRun:
 		e.runCommand(cmd.Arg)
+	case engine.ActionDockerToggle:
+		e.toggleDocker()
 	case engine.ActionNextTab:
 		e.cycleTab(cmd.Times())
 	case engine.ActionPrevTab:

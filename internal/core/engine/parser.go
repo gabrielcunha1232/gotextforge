@@ -36,6 +36,7 @@ var leaderMap = map[string]Command{
 	"dd": {Action: ActionRun, Arg: "docker compose down"},
 	"dp": {Action: ActionRun, Arg: "docker ps"},
 	"dl": {Action: ActionRun, Arg: "docker compose logs -f --tail 100"},
+	"do": {Action: ActionDockerToggle},
 }
 
 func leaderPrefix(seq string) bool {

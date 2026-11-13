@@ -34,6 +34,7 @@ func TestSequenciasAleatoriasNaoQuebramOEditor(t *testing.T) {
 		ed.start = func(string, string, func(bool)) (*runner.Job, error) {
 			return nil, errors.New("comandos desativados no teste aleatorio")
 		}
+		ed.dockerExec = nil
 		if rng.IntN(2) == 0 {
 			ed.OpenFile("outro.go")
 		}

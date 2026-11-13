@@ -99,6 +99,7 @@ const (
 	ActionTerminalNew
 	ActionTerminalRerun
 	ActionRun
+	ActionDockerToggle
 )
 
 type Command struct {

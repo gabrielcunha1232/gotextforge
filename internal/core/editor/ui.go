@@ -37,8 +37,12 @@ func (e *Editor) Frame() render.Frame {
 		}
 	}
 
-	if rows := e.terminalRows(); rows > 0 {
-		frame.Lines = append(frame.Lines, e.terminalPanel(rows, fullWidth)...)
+	if rows := e.bottomRows(); rows > 0 {
+		if e.dock.open {
+			frame.Lines = append(frame.Lines, e.dockerPanel(rows, fullWidth)...)
+		} else {
+			frame.Lines = append(frame.Lines, e.terminalPanel(rows, fullWidth)...)
+		}
 		switch e.mode {
 		case ModeCommand, ModeSearch, ModePrompt:
 			frame.Cursor.Row = len(frame.Lines)
@@ -55,7 +59,7 @@ func (e *Editor) Frame() render.Frame {
 		frame.Cursor = render.ScreenPos{Row: row + 1, Col: min(col+4+len([]rune(sanitize(string(e.finder.query)))), fullWidth-1)}
 		frame.CursorShape = render.CursorBar
 	}
-	if e.mode == ModeExplorer || e.mode == ModeTerminal {
+	if e.mode == ModeExplorer || e.mode == ModeTerminal || e.mode == ModeDocker {
 		frame.HideCursor = true
 	}
 	frame.Status = e.statusLine()

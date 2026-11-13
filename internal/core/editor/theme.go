@@ -61,6 +61,7 @@ var modeColors = map[Mode]render.Color{
 	ModeExplorer: colTeal,
 	ModeFinder:   colMagenta,
 	ModeTerminal: colGreen,
+	ModeDocker:   colBlue1,
 }
 
 var modeNames = map[Mode]string{
@@ -72,6 +73,7 @@ var modeNames = map[Mode]string{
 	ModeExplorer: "ARQUIVOS",
 	ModeFinder:   "BUSCAR",
 	ModeTerminal: "TERMINAL",
+	ModeDocker:   "DOCKER",
 }
 
 func withBg(s render.Style, bg render.Color) render.Style {

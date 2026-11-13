@@ -78,6 +78,7 @@ func (e *Editor) Close() {
 	if e.term.job != nil {
 		e.term.job.Cancel()
 	}
+	e.stopDockerRefresh()
 	if e.lsp.client != nil {
 		e.lsp.client.Close()
 	}
@@ -112,6 +113,8 @@ func (e *Editor) HandleAsync(ev any) {
 		}
 	case terminalTick:
 		e.receiveTerminal(v)
+	case dockerSnapshot:
+		e.receiveDocker(v)
 	case lsp.CompletionEvent:
 		if v.ID != e.lsp.compReq || e.mode != ModeInsert || v.Err != nil {
 			return

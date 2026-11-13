@@ -30,7 +30,7 @@ func (e *Editor) tablineRows() int {
 }
 
 func (e *Editor) textHeight() int {
-	return max(e.height-1-e.tablineRows()-e.terminalRows(), 1)
+	return max(e.height-1-e.tablineRows()-e.bottomRows(), 1)
 }
 
 func (e *Editor) layout() {
