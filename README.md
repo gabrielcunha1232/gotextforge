@@ -78,7 +78,8 @@ Na tela inicial: `f` busca, `e` explora, `n` cria arquivo, `p` troca de pasta, `
 
 | Atalho | Comando |
 |---|---|
-| `:!comando` ou `Espaço t n` | roda qualquer comando na pasta do projeto |
+| `:!comando` ou `Espaço t n` | roda qualquer comando na pasta do terminal (mostrada no painel) |
+| `cd pasta`, `cd ..`, `cd -`, `cd ~`, `cd`, `pwd` | navega entre pastas só no terminal; o projeto e o explorador não mudam (`cd` sozinho volta ao projeto) |
 | `Espaço g b` / `g t` / `g r` / `g v` / `g m` | `go build ./...` / `go test ./...` / `go run .` / `go vet ./...` / `go mod tidy` |
 | `Espaço d u` / `d d` / `d p` / `d l` | `docker compose up` / `down` / `docker ps` / `logs -f` |
 | `Espaço t t` | focar, abrir ou fechar o painel |

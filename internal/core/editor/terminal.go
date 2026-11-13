@@ -31,6 +31,8 @@ type terminal struct {
 	last   string
 	dir    string
 	done   bool
+	cwd    string
+	prev   string
 }
 
 var locationRe = regexp.MustCompile(`((?:[A-Za-z]:)?[^\s:"'()\[\]]+\.[A-Za-z0-9]+):(\d+)(?::(\d+))?`)
@@ -90,7 +92,74 @@ func (e *Editor) toggleTerminal() {
 }
 
 func (e *Editor) promptCommand() {
-	e.openPrompt("$ ", "", e.runCommand)
+	label := shortenPath(sanitize(e.terminalDir()), 40) + " $ "
+	e.openPrompt(label, "", e.runCommand)
+}
+
+func (e *Editor) terminalDir() string {
+	if e.term.cwd != "" {
+		return e.term.cwd
+	}
+	return e.projectRoot()
+}
+
+func (e *Editor) terminalBuiltin(command string) bool {
+	if strings.ContainsAny(command, "&|;<>") {
+		return false
+	}
+	fields := strings.Fields(command)
+	switch fields[0] {
+	case "pwd":
+		e.openTerminal(false)
+		e.message = "pasta do terminal: " + e.terminalDir()
+		return true
+	case "cd", "chdir":
+	default:
+		return false
+	}
+
+	args := fields[1:]
+	if len(args) > 0 && strings.EqualFold(args[0], "/d") {
+		args = args[1:]
+	}
+	target := strings.Trim(strings.Join(args, " "), `"'`)
+	current := e.terminalDir()
+
+	switch {
+	case target == "":
+		target = e.projectRoot()
+	case target == "-":
+		if e.term.prev == "" {
+			e.message = "cd -: não há pasta anterior"
+			return true
+		}
+		target = e.term.prev
+	case target == "~" || strings.HasPrefix(target, "~/") || strings.HasPrefix(target, `~\`):
+		home, err := os.UserHomeDir()
+		if err != nil {
+			e.message = "cd: não achei a pasta do usuário"
+			return true
+		}
+		target = filepath.Join(home, target[1:])
+	case !filepath.IsAbs(target):
+		target = filepath.Join(current, target)
+	}
+	target = filepath.Clean(target)
+
+	if fi, err := os.Stat(target); err != nil || !fi.IsDir() {
+		e.message = "cd: pasta não encontrada: " + strings.Join(args, " ")
+		e.openTerminal(false)
+		return true
+	}
+
+	e.term.prev = current
+	e.term.cwd = target
+	if samePath(target, e.projectRoot()) {
+		e.term.cwd = ""
+	}
+	e.openTerminal(false)
+	e.message = "pasta do terminal: " + target
+	return true
 }
 
 func (e *Editor) rerunCommand() {
@@ -122,16 +191,19 @@ func (e *Editor) runCommand(command string) {
 	if command == "" {
 		return
 	}
+	if e.terminalBuiltin(command) {
+		return
+	}
 	if e.term.job != nil {
 		e.term.job.Cancel()
 	}
-	dir := e.projectRoot()
+	dir := e.terminalDir()
 	job, err := e.start(command, dir, e.notifyTerminal)
 	if err != nil {
 		e.message = "erro ao executar: " + err.Error()
 		return
 	}
-	e.term = terminal{open: e.term.open, job: job, follow: true, last: command, dir: dir}
+	e.term = terminal{open: e.term.open, job: job, follow: true, last: command, dir: dir, cwd: e.term.cwd, prev: e.term.prev}
 	e.openTerminal(false)
 
 	padded := " " + command + " "
@@ -333,10 +405,7 @@ func (e *Editor) terminalPanel(rows, width int) []render.StyledLine {
 	}
 
 	header := render.StyledLine{{Text: " TERMINAL ", Style: render.Style{Fg: colBlack, Bg: color, Bold: true}}}
-	dir := t.dir
-	if dir == "" {
-		dir = e.projectRoot()
-	}
+	dir := e.terminalDir()
 	header = append(header, render.Span{Text: " " + shortenPath(sanitize(dir), max(width/3, 16)) + " ", Style: render.Style{Fg: colBlue, Bg: colBgStatus}})
 	if t.last != "" {
 		header = append(header, render.Span{Text: "$ " + sanitize(t.last) + " ", Style: render.Style{Fg: colFg, Bg: colBgStatus, Bold: true}})

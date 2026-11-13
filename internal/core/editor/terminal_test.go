@@ -201,3 +201,76 @@ func TestExploradorAtualizaDepoisDoComando(t *testing.T) {
 		t.Errorf("o explorador deveria mostrar a pasta criada pelo comando: %s", got)
 	}
 }
+
+func TestTerminalCd(t *testing.T) {
+	ed, root := projectEditor(t, map[string]string{
+		"a.go":             "package a\n",
+		"servico/api/x.go": "package api\n",
+	})
+	typeKeys(t, ed, " e<Esc>")
+	treeRoot := ed.explorer.tree.path
+
+	ed.runCommand("cd servico")
+	if !samePath(ed.terminalDir(), filepath.Join(root, "servico")) {
+		t.Fatalf("cd deveria mudar a pasta do terminal: %q", ed.terminalDir())
+	}
+	if !samePath(ed.projectRoot(), root) || !samePath(ed.explorer.tree.path, treeRoot) {
+		t.Errorf("cd no terminal nao pode mudar a pasta do projeto nem o explorador")
+	}
+	if ed.term.job != nil {
+		t.Errorf("cd e resolvido pelo editor, sem rodar processo")
+	}
+
+	ed.runCommand("mkdir criado_aqui")
+	waitTerminal(t, ed)
+	if !exists(filepath.Join(root, "servico", "criado_aqui")) {
+		t.Errorf("o comando seguinte deveria rodar dentro de servico/")
+	}
+	if !strings.Contains(ed.Frame().Lines[ed.textHeight()].Text(), "servico") {
+		t.Errorf("o cabecalho do painel deveria mostrar a pasta atual: %q", ed.Frame().Lines[ed.textHeight()].Text())
+	}
+
+	steps := []struct {
+		cmd  string
+		want string
+	}{
+		{"cd api", filepath.Join(root, "servico", "api")},
+		{"cd ../..", root},
+		{"cd -", filepath.Join(root, "servico", "api")},
+		{"cd", root},
+		{`cd /d "` + filepath.Join(root, "servico") + `"`, filepath.Join(root, "servico")},
+		{"cd nao-existe", filepath.Join(root, "servico")},
+	}
+	for _, s := range steps {
+		ed.runCommand(s.cmd)
+		if !samePath(ed.terminalDir(), s.want) {
+			t.Errorf("%q: pasta = %q, esperava %q", s.cmd, ed.terminalDir(), s.want)
+		}
+	}
+	if !strings.Contains(ed.Frame().Status.Text(), "pasta não encontrada") {
+		t.Errorf("cd para pasta inexistente deveria avisar: %q", ed.Frame().Status.Text())
+	}
+
+	ed.runCommand("pwd")
+	if !strings.HasSuffix(ed.message, "servico") {
+		t.Errorf("pwd deveria mostrar a pasta do terminal: %q", ed.message)
+	}
+
+	ed.runCommand("cd .. && mkdir composto")
+	waitTerminal(t, ed)
+	if !exists(filepath.Join(root, "composto")) {
+		t.Errorf("cd com && vai inteiro para o shell e funciona naquele comando")
+	}
+	if !samePath(ed.terminalDir(), filepath.Join(root, "servico")) {
+		t.Errorf("cd dentro de um comando composto nao muda a pasta do painel: %q", ed.terminalDir())
+	}
+}
+
+func TestPromptMostraAPastaDoTerminal(t *testing.T) {
+	ed, _ := projectEditor(t, map[string]string{"sub/a.go": "package a\n"})
+	ed.runCommand("cd sub")
+	typeKeys(t, ed, " tn")
+	if st := ed.Frame().Status.Text(); !strings.Contains(st, "sub $ ") {
+		t.Errorf("o prompt deveria mostrar onde o comando vai rodar: %q", st)
+	}
+}
