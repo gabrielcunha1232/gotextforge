@@ -4,7 +4,7 @@
 
 ## Estado atual (atualizado em 2026-11-16)
 
-> **Para a próxima sessão:** o **MS7 (spike do canvas no Wails v3) está concluído e aprovado** — veja "✓ Fase 2 — MS7" logo abaixo. O **MS8** (moldura do desktop no estilo do protótipo) está em andamento: contrato aprovado e passo 1 feito — veja "Contrato do MS8" lá. **Próximo: passo 2, o `ed.UI()`.**
+> **Para a próxima sessão:** o **MS7 (spike do canvas no Wails v3) está concluído e aprovado** — veja "✓ Fase 2 — MS7" logo abaixo. O **MS8** (moldura do desktop no estilo do protótipo) está em andamento: contrato aprovado e passo 1 feito — veja "Contrato do MS8" lá. **Próximo: passo 3, o esqueleto da moldura em React com o canvas no centro.**
 
 ## ✓ Fase 2 — MS7 (CONCLUÍDO em 2026-11-16)
 
@@ -33,8 +33,9 @@
   2. **`ed.UI()`:** um retrato só com dados (modo, foco, abas, linhas visíveis do explorador e a selecionada, painel de baixo, terminal, Docker, problemas de todas as abas, busca de arquivos, informações da status line). O desktop só envia o `UI()` quando ele muda; o canvas continua recebendo o `Frame` direto.
   3. **Ações por clique como métodos do core:** `OpenFile`, `SwitchTab`, `CloseTab`, `ToggleNode`, `Focus`, `GoTo`, `RunCommand`, `ClickText`, expostos pelo `EditorService`. **O teclado continua indo inteiro para o core**; o HTML é só a vista do estado do core (mouse e teclado nunca discordam).
   4. **Moldura em React** (decisão do humano; já usa no newpostman), com o canvas em TS puro no centro. Cores do `theme.go` entregues ao CSS por um `Theme()`.
-  5. **Passos:** (1) moldura externa no core ✅ · (2) `UI()` · (3) esqueleto HTML/React com o canvas no centro · (4) abas e status bar · (5) explorador · (6) painel de baixo: Terminal/Problemas/Docker · (7) busca de arquivos como paleta (Ctrl+K e `Espaço Espaço`) · (8) aviso ao fechar pelo X com arquivos não salvos e clique no texto.
+  5. **Passos:** (1) moldura externa no core ✅ · (2) `UI()` ✅ · (3) esqueleto HTML/React com o canvas no centro · (4) abas e status bar · (5) explorador · (6) painel de baixo: Terminal/Problemas/Docker · (7) busca de arquivos como paleta (Ctrl+K e `Espaço Espaço`) · (8) aviso ao fechar pelo X com arquivos não salvos e clique no texto.
 - **MS8 passo 1 (feito em 2026-11-16):** `external` no `Editor`, `SetExternalChrome`, `textFrame()`/`commandLine()` em `ui.go`, `overlayFinder` extraído do `Frame()`. `tablineRows`/`tabline`/`bottomRows` respeitam o modo. Testes em `chrome_test.go`; o teste aleatório roda metade das rodadas com a moldura externa e confere que há sempre `altura-1` linhas. O desktop **ainda não liga** o modo (liga no passo 3, junto com a moldura HTML).
+- **MS8 passo 2 (feito em 2026-11-16):** `ed.UI() UIState` em `uistate.go` — tipos `UITab`, `UIExplorer`/`UITreeRow`, `UITerminal` (só as últimas 2000 linhas; `First` é o índice da primeira), `UIDocker` (reaproveita os tipos de `internal/core/docker`), `UIProblem` (todas as abas; coluna convertida de UTF-16 para rune com `lsp.FromPosition`, respeitando a D3), `UIFinder` (nil quando fechada; `Create` = linha "+ criar" depois dos resultados; `Positions` em runes) e `UIStatus` (inclui LF/CRLF, BOM, linguagem, estado do gopls e a versão do Go do `go.mod`, **em cache por raiz** para não ler o disco a cada tecla). **Sem tags JSON no core**: o TS usa os nomes dos campos Go como estão (PascalCase). `Focus`: editor/explorer/terminal/docker/finder/command. Medido: `UI()` + JSON ~0,3 ms no pior caso (terminal com 2000 linhas, ~119 KB). Testes em `uistate_test.go`; o teste aleatório também chama `UI()` nas rodadas com moldura externa.
 
 **Armadilhas do desktop (não redescobrir):**
 - **`go build ./...` precisa do `frontend/dist/`**: o `.gitkeep` está versionado e o Vite está com `emptyOutDir: false` e nomes fixos (sem hash) para não acumular lixo. Depois de mexer no TS, rode `npm run build` antes do `go build`.

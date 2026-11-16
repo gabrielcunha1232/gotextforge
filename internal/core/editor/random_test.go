@@ -74,6 +74,9 @@ func TestSequenciasAleatoriasNaoQuebramOEditor(t *testing.T) {
 						t.Fatalf("linha %d com largura %d > %d\nteclas %v", i, l.Width(), width, history)
 					}
 				}
+				if external {
+					_ = ed.UI()
+				}
 				if external && len(f.Lines) != max(height-1, 1) {
 					t.Fatalf("moldura externa com %d linhas, quero %d\nteclas %v", len(f.Lines), max(height-1, 1), history)
 				}

@@ -92,6 +92,7 @@ type Editor struct {
 	width      int
 	height     int
 	external   bool
+	goVersion  [2]string
 }
 
 func New(buf *buffer.Buffer, path string) *Editor {
