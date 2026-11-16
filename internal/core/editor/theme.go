@@ -1,6 +1,8 @@
 package editor
 
 import (
+	"strings"
+
 	"github.com/gabrielcunha1232/gotextforge/internal/core/render"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/syntax"
 )
@@ -79,4 +81,32 @@ var modeNames = map[Mode]string{
 func withBg(s render.Style, bg render.Color) render.Style {
 	s.Bg = bg
 	return s
+}
+
+func Palette() map[string]render.Color {
+	p := map[string]render.Color{
+		"bg":           colBlack,
+		"bg-highlight": colBgHighlight,
+		"bg-status":    colBgStatus,
+		"bg-float":     colBgFloat,
+		"bg-sel":       colBgSel,
+		"fg":           colFg,
+		"fg-dark":      colFgDark,
+		"gutter":       colFgGutter,
+		"dark3":        colDark3,
+		"comment":      colComment,
+		"blue":         colBlue,
+		"blue1":        colBlue1,
+		"magenta":      colMagenta,
+		"orange":       colOrange,
+		"yellow":       colYellow,
+		"green":        colGreen,
+		"red":          colRed,
+		"teal":         colTeal,
+		"border":       colBorder,
+	}
+	for m, c := range modeColors {
+		p["mode-"+strings.ToLower(modeNames[m])] = c
+	}
+	return p
 }

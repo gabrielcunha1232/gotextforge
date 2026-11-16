@@ -17,6 +17,8 @@ func Run(ed *editor.Editor) error {
 		return err
 	}
 
+	ed.SetExternalChrome(true)
+
 	var app *application.App
 	service := NewEditorService(ed,
 		func() { app.Quit() },
@@ -38,8 +40,8 @@ func Run(ed *editor.Editor) error {
 
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:            "gotextforge",
-		Width:            1200,
-		Height:           800,
+		Width:            1400,
+		Height:           900,
 		BackgroundColour: application.NewRGB(0x0b, 0x0e, 0x13),
 		URL:              "/",
 	})

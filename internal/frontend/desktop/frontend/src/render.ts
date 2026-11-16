@@ -1,3 +1,5 @@
+import type { Pos, UIState } from "./types";
+
 export const BG = "#0b0e13";
 export const FG = "#d6e2ec";
 const CURSOR = "#d6e2ec";
@@ -20,6 +22,8 @@ export type Frame = {
   lines: Span[][];
   status: Span[];
   cursor: { row: number; col: number; bar?: boolean; hide?: boolean };
+  pos: Pos;
+  ui?: UIState;
 };
 
 export type Cell = { w: number; h: number; ascent: number };

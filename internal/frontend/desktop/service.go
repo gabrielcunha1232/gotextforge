@@ -1,7 +1,9 @@
 package desktop
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"sync"
@@ -30,11 +32,20 @@ type Cursor struct {
 	Hide bool `json:"hide,omitempty"`
 }
 
+type Pos struct {
+	Line     int    `json:"line"`
+	Col      int    `json:"col"`
+	Progress string `json:"progress"`
+	Pending  string `json:"pending,omitempty"`
+}
+
 type Frame struct {
-	Seq    uint64   `json:"seq"`
-	Lines  [][]Span `json:"lines"`
-	Status []Span   `json:"status"`
-	Cursor Cursor   `json:"cursor"`
+	Seq    uint64          `json:"seq"`
+	Lines  [][]Span        `json:"lines"`
+	Status []Span          `json:"status"`
+	Cursor Cursor          `json:"cursor"`
+	Pos    Pos             `json:"pos"`
+	UI     json.RawMessage `json:"ui,omitempty"`
 }
 
 const FrameEvent = "frame"
@@ -46,6 +57,7 @@ type EditorService struct {
 	quit   func()
 	emit   func(Frame)
 	cancel context.CancelFunc
+	lastUI []byte
 }
 
 func NewEditorService(ed *editor.Editor, quit func(), emit func(Frame)) *EditorService {
@@ -63,6 +75,22 @@ func (s *EditorService) ServiceShutdown() error {
 		s.cancel()
 	}
 	return nil
+}
+
+func (s *EditorService) Start(cols, rows int) Frame {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lastUI = nil
+	s.ed.HandleEvent(input.NewResizeEvent(cols, rows))
+	return s.frame()
+}
+
+func (s *EditorService) Theme() map[string]string {
+	out := map[string]string{}
+	for name, c := range editor.Palette() {
+		out[name] = cssColor(c)
+	}
+	return out
 }
 
 func (s *EditorService) Resize(cols, rows int) Frame {
@@ -110,6 +138,14 @@ func (s *EditorService) frame() Frame {
 	s.seq++
 	f := toFrame(s.ed.Frame())
 	f.Seq = s.seq
+
+	ui := s.ed.UI()
+	f.Pos = Pos{Line: ui.Status.Line, Col: ui.Status.Col, Progress: ui.Status.Progress, Pending: ui.Status.Pending}
+	ui.Status.Line, ui.Status.Col, ui.Status.Progress, ui.Status.Pending = 0, 0, "", ""
+	if data, err := json.Marshal(ui); err == nil && !bytes.Equal(data, s.lastUI) {
+		s.lastUI = data
+		f.UI = data
+	}
 	return f
 }
 

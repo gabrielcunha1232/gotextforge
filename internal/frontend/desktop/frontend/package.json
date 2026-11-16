@@ -7,10 +7,15 @@
     "build": "tsc && vite build"
   },
   "devDependencies": {
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^6.3.0",
     "typescript": "^5.2.2",
     "vite": "^8.2.4"
   },
   "dependencies": {
-    "@wailsio/runtime": "3.0.0"
+    "@wailsio/runtime": "3.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   }
 }

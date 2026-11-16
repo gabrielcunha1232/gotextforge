@@ -104,3 +104,32 @@ func TestSeqCresce(t *testing.T) {
 		t.Errorf("linhas = %d, quero 23 (24 menos a status)", len(b.Lines))
 	}
 }
+
+func TestUISoQuandoMuda(t *testing.T) {
+	s := NewEditorService(editor.New(nil, ""), nil, nil)
+	f := s.Start(80, 24)
+	if len(f.UI) == 0 {
+		t.Fatal("o Start deveria mandar o retrato inteiro")
+	}
+	f = s.Keys([]KeyInput{{Key: "i"}, {Key: "a"}, {Key: "Escape"}})
+	if len(f.UI) == 0 {
+		t.Error("o modo e o [+] mudaram; o retrato deveria vir")
+	}
+	f = s.Keys([]KeyInput{{Key: "h"}})
+	if len(f.UI) != 0 {
+		t.Errorf("só o cursor mexeu; o retrato não deveria vir: %s", f.UI)
+	}
+	if f.Pos.Col != 1 || f.Pos.Line != 1 {
+		t.Errorf("pos = %+v, quero linha 1 coluna 1", f.Pos)
+	}
+	if f = s.Start(80, 24); len(f.UI) == 0 {
+		t.Error("um novo Start (página recarregada) deveria mandar o retrato de novo")
+	}
+}
+
+func TestTheme(t *testing.T) {
+	th := NewEditorService(editor.New(nil, ""), nil, nil).Theme()
+	if th["bg"] != "#0b0e13" || th["mode-normal"] == "" || th["mode-insert"] == "" {
+		t.Errorf("tema = %v", th)
+	}
+}
