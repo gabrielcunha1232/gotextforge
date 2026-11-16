@@ -33,6 +33,9 @@ type terminal struct {
 	done   bool
 	cwd    string
 	prev   string
+	kinds  []byte
+	kindOf int
+	kindN  int
 }
 
 var locationRe = regexp.MustCompile(`((?:[A-Za-z]:)?[^\s:"'()\[\]]+\.[A-Za-z0-9]+):(\d+)(?::(\d+))?`)
@@ -326,11 +329,19 @@ func (e *Editor) jumpToLocation(i int) {
 		e.message = fmt.Sprintf("arquivo %q não encontrado no projeto", file)
 		return
 	}
+	e.goTo(path, line, col)
+}
+
+func (e *Editor) goTo(path string, line, col int) {
 	e.OpenFile(path)
+	if !samePath(e.path, path) {
+		return
+	}
 	target := e.buf.ClampPos(buffer.Pos{Line: line - 1})
 	e.cursor.Line = target.Line
 	e.setCol(min(max(col-1, 0), e.maxCol(target.Line)))
 	e.mode = ModeNormal
+	e.viewport.EnsureVisible(e.cursor.Line, e.buf.LineCount())
 }
 
 func (e *Editor) nextLocation(from, step int) int {
@@ -390,21 +401,55 @@ func (e *Editor) handleTerminalKey(k input.Key) {
 	}
 }
 
-func terminalLineStyle(line string) render.Style {
+const (
+	kindPlain    = ' '
+	kindError    = 'e'
+	kindOK       = 'o'
+	kindWarning  = 'w'
+	kindLocation = 'l'
+)
+
+func terminalLineKind(line string) byte {
 	trimmed := strings.TrimSpace(line)
 	switch {
 	case strings.HasPrefix(trimmed, "--- FAIL"), strings.HasPrefix(trimmed, "FAIL"), strings.HasPrefix(trimmed, "panic:"),
 		strings.HasPrefix(trimmed, "Error"), strings.HasPrefix(trimmed, "error"):
-		return render.Style{Fg: colRed}
+		return kindError
 	case strings.HasPrefix(trimmed, "--- PASS"), strings.HasPrefix(trimmed, "ok "), trimmed == "PASS", strings.HasPrefix(trimmed, "✔"):
-		return render.Style{Fg: colGreen}
+		return kindOK
 	case strings.Contains(strings.ToLower(trimmed), "warning"):
-		return render.Style{Fg: colYellow}
+		return kindWarning
 	}
 	if _, _, _, ok := parseLocation(line); ok {
+		return kindLocation
+	}
+	return kindPlain
+}
+
+func terminalLineStyle(line string) render.Style {
+	switch terminalLineKind(line) {
+	case kindError, kindLocation:
 		return render.Style{Fg: colRed}
+	case kindOK:
+		return render.Style{Fg: colGreen}
+	case kindWarning:
+		return render.Style{Fg: colYellow}
 	}
 	return render.Style{Fg: colFgDark}
+}
+
+func (e *Editor) terminalKinds() []byte {
+	t := &e.term
+	lines := t.snap.Lines
+	if t.kinds != nil && t.kindOf == t.snap.Total && t.kindN == len(lines) {
+		return t.kinds
+	}
+	kinds := make([]byte, len(lines))
+	for i, l := range lines {
+		kinds[i] = terminalLineKind(l)
+	}
+	t.kinds, t.kindOf, t.kindN = kinds, t.snap.Total, len(lines)
+	return kinds
 }
 
 func (e *Editor) terminalPanel(rows, width int) []render.StyledLine {

@@ -59,7 +59,9 @@ type UITerminal struct {
 	Millis   int64
 	First    int
 	Lines    []string
+	Kinds    string
 	Selected int
+	Follow   bool
 }
 
 type UIDocker struct {
@@ -190,7 +192,7 @@ func (e *Editor) uiBottom() string {
 
 func (e *Editor) uiTerminal() UITerminal {
 	t := &e.term
-	out := UITerminal{Open: t.open, Dir: e.terminalDir(), Selected: t.sel}
+	out := UITerminal{Open: t.open, Dir: e.terminalDir(), Selected: t.sel, Follow: t.follow}
 	if t.job == nil {
 		return out
 	}
@@ -209,11 +211,14 @@ func (e *Editor) uiTerminal() UITerminal {
 		out.State = "canceled"
 	}
 	lines := t.snap.Lines
+	kinds := e.terminalKinds()
 	if len(lines) > uiTerminalLines {
 		out.First = len(lines) - uiTerminalLines
 		lines = lines[out.First:]
+		kinds = kinds[out.First:]
 	}
 	out.Lines = append([]string(nil), lines...)
+	out.Kinds = string(kinds)
 	return out
 }
 

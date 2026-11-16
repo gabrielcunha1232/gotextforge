@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { posStore } from "../bridge";
+import { posStore, problemsStore } from "../bridge";
 import type { UIState } from "../types";
 
 const LSP_LABEL: Record<string, string> = {
@@ -25,8 +25,10 @@ export function StatusBar({ ui }: { ui: UIState | null }) {
         {s.File}
         {s.Modified && " ●"}
       </span>
-      <span className={s.Errors > 0 ? "err" : ""}>⊙ {s.Errors}</span>
-      <span className={s.Warnings > 0 ? "warn" : ""}>△ {s.Warnings}</span>
+      <span className="click" title="Problemas" onClick={() => problemsStore.set(true)}>
+        <span className={s.Errors > 0 ? "err" : ""}>⊙ {s.Errors}</span>
+        <span className={s.Warnings > 0 ? "warn" : ""}>△ {s.Warnings}</span>
+      </span>
       {pos.pending && <span className="pending">{pos.pending}</span>}
       <span className="push">
         Ln {pos.line}, Col {pos.col}　{pos.progress}

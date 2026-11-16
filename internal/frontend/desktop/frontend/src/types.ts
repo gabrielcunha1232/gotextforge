@@ -21,7 +21,9 @@ export type UITerminal = {
   Millis: number;
   First: number;
   Lines: string[] | null;
+  Kinds: string;
   Selected: number;
+  Follow: boolean;
 };
 
 export type DockerContainer = { ID: string; Name: string; Image: string; State: string; Status: string; Ports: string };

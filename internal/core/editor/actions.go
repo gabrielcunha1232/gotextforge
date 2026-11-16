@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gabrielcunha1232/gotextforge/internal/core/input"
+	"github.com/gabrielcunha1232/gotextforge/internal/core/runner"
 )
 
 func (e *Editor) escape() {
@@ -107,4 +108,68 @@ func (e *Editor) TogglePanel(name string) {
 			e.openFileFinder()
 		}
 	}
+}
+
+func (e *Editor) GoTo(path string, line, col int) {
+	e.escape()
+	e.goTo(path, line, col)
+}
+
+func (e *Editor) TerminalClick(i int) {
+	e.escape()
+	t := &e.term
+	if !t.open || i < 0 || i >= len(t.snap.Lines) {
+		return
+	}
+	t.sel, t.follow = i, false
+	e.mode = ModeTerminal
+	if _, _, _, ok := parseLocation(t.snap.Lines[i]); ok {
+		e.jumpToLocation(i)
+	}
+}
+
+func (e *Editor) TerminalAction(name string) {
+	e.escape()
+	t := &e.term
+	switch name {
+	case "rerun":
+		e.rerunCommand()
+	case "cancel":
+		if t.job != nil && t.snap.State == runner.Running {
+			t.job.Cancel()
+		}
+	case "new":
+		e.promptCommand()
+	case "close":
+		e.closeTerminal()
+	}
+}
+
+func (e *Editor) DockerTab(name string) {
+	e.escape()
+	for i, n := range dockerTabNames {
+		if n == name && e.dock.open {
+			e.dock.tab = dockerTab(i)
+			e.dock.sel, e.dock.top = 0, 0
+			e.mode = ModeDocker
+		}
+	}
+}
+
+func (e *Editor) DockerClick(i int) {
+	e.escape()
+	if !e.dock.open || i < 0 || i >= e.dockerItemCount() {
+		return
+	}
+	e.dock.sel = i
+	e.mode = ModeDocker
+}
+
+func (e *Editor) DockerKey(key string) {
+	e.escape()
+	if !e.dock.open || len(key) != 1 || !strings.Contains("slrbdxq", key) {
+		return
+	}
+	e.mode = ModeDocker
+	e.handleDockerKey(input.Key{Code: input.KeyRune, Rune: rune(key[0])})
 }

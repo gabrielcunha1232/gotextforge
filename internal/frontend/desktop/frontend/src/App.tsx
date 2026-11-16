@@ -5,11 +5,12 @@ import { Rail } from "./components/Rail";
 import { Sidebar } from "./components/Sidebar";
 import { Tabs } from "./components/Tabs";
 import { EditorView } from "./components/EditorView";
-import { BottomPanel } from "./components/BottomPanel";
+import { BottomPanel, useBottomVisible } from "./components/BottomPanel";
 import { StatusBar } from "./components/StatusBar";
 
 export function App() {
   const ui = useSyncExternalStore(uiStore.subscribe, uiStore.get);
+  const showBottom = useBottomVisible(ui);
 
   return (
     <div className="shell">
@@ -20,7 +21,7 @@ export function App() {
         <main className="center">
           <Tabs ui={ui} />
           <EditorView />
-          {ui && ui.Bottom !== "" && <BottomPanel ui={ui} />}
+          {ui && showBottom && <BottomPanel ui={ui} />}
         </main>
       </div>
       <StatusBar ui={ui} />

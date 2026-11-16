@@ -6,7 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gabrielcunha1232/gotextforge/internal/core/docker"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/input"
+	"github.com/gabrielcunha1232/gotextforge/internal/core/runner"
 )
 
 func TestSwitchTabSaiDoInsert(t *testing.T) {
@@ -152,5 +154,83 @@ func TestTogglePanel(t *testing.T) {
 	ed.TogglePanel("docker")
 	if ed.dock.open || !strings.Contains(ed.Frame().Status.Text(), "docker desativado") {
 		t.Errorf("sem docker, deveria só avisar")
+	}
+}
+
+func TestTerminalClickEKinds(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "a.go"), []byte("package a\n\nfunc f() {\n\tx := 1\n}\n"), 0o644)
+	ed := New(nil, "")
+	ed.HandleEvent(input.NewResizeEvent(100, 30))
+	ed.SetRoot(dir)
+	ed.term.open = true
+	ed.term.job = &runner.Job{Command: "go build ./..."}
+	ed.term.snap = runner.Snapshot{Total: 4, State: runner.Failed, Lines: []string{
+		"# exemplo",
+		"./a.go:4:2: declared and not used: x",
+		"ok  \tpkg\t0.1s",
+		"FAIL",
+	}}
+
+	if k := ed.UI().Terminal.Kinds; k != " loe" {
+		t.Errorf("kinds = %q, quero %q", k, " loe")
+	}
+
+	ed.TerminalClick(0)
+	if ed.mode != ModeTerminal || ed.term.sel != 0 || ed.term.follow {
+		t.Errorf("clicar numa linha comum deveria só selecionar e focar: modo %v sel %d", ed.mode, ed.term.sel)
+	}
+	ed.TerminalClick(1)
+	if ed.mode != ModeNormal || filepath.Base(ed.path) != "a.go" || ed.cursor.Line != 3 || ed.cursor.Col != 1 {
+		t.Errorf("clicar no erro deveria abrir a.go na linha 4 coluna 2: %q %+v modo %v", ed.path, ed.cursor, ed.mode)
+	}
+
+	ed.TerminalAction("close")
+	if ed.term.open {
+		t.Errorf("close deveria fechar o terminal")
+	}
+}
+
+func TestGoTo(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "b.go")
+	os.WriteFile(path, []byte("package b\n\nvar s = \"x\"\n"), 0o644)
+	ed := New(nil, "")
+	ed.HandleEvent(input.NewResizeEvent(100, 30))
+	typeKeys(t, ed, "i")
+
+	ed.GoTo(path, 3, 5)
+	if ed.mode != ModeNormal || ed.cursor.Line != 2 || ed.cursor.Col != 4 {
+		t.Errorf("GoTo deveria sair do insert e ir para 3:5: modo %v cursor %+v", ed.mode, ed.cursor)
+	}
+	ed.GoTo(path, 99, 99)
+	if ed.cursor.Line != 2 {
+		t.Errorf("linha fora do arquivo deveria parar na última: %+v", ed.cursor)
+	}
+}
+
+func TestDockerCliques(t *testing.T) {
+	ed, _ := editorWithFiles(t, map[string]string{"a.go": "package a\n"}, "a.go")
+	ed.dockerExec = fakeDockerExec(nil)
+	ed.TogglePanel("docker")
+	ed.receiveDocker(dockerSnapshot{gen: ed.dock.gen, containers: []docker.Container{{ID: "1", Name: "api", State: "running"}, {ID: "2", Name: "db", State: "exited"}}})
+	defer ed.Close()
+
+	ed.DockerClick(1)
+	if ed.dock.sel != 1 || ed.mode != ModeDocker {
+		t.Errorf("DockerClick(1): sel %d modo %v", ed.dock.sel, ed.mode)
+	}
+	ed.DockerTab("Imagens")
+	if ed.dock.tab != dockImages || ed.dock.sel != 0 {
+		t.Errorf("DockerTab: aba %v sel %d", ed.dock.tab, ed.dock.sel)
+	}
+	ed.DockerKey("x")
+	if !strings.Contains(ed.Frame().Status.Text(), "não é um terminal") {
+		t.Errorf("x deveria avisar que o painel não é terminal: %q", ed.Frame().Status.Text())
+	}
+	ed.DockerKey("Z")
+	ed.DockerKey("q")
+	if ed.dock.open {
+		t.Errorf("q deveria fechar o painel")
 	}
 }

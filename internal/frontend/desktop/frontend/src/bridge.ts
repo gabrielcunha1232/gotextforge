@@ -27,6 +27,7 @@ class Store<T> {
 
 export const uiStore = new Store<UIState | null>(null);
 export const posStore = new Store<Pos>({ line: 1, col: 1, progress: "" });
+export const problemsStore = new Store<boolean>(false);
 
 let renderer: Renderer | null = null;
 let canvas: HTMLCanvasElement | null = null;

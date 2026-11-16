@@ -132,6 +132,30 @@ func (s *EditorService) TogglePanel(name string) Frame {
 	return s.act(func() { s.ed.TogglePanel(name) })
 }
 
+func (s *EditorService) GoTo(path string, line, col int) Frame {
+	return s.act(func() { s.ed.GoTo(path, line, col) })
+}
+
+func (s *EditorService) TerminalClick(i int) Frame {
+	return s.act(func() { s.ed.TerminalClick(i) })
+}
+
+func (s *EditorService) TerminalAction(name string) Frame {
+	return s.act(func() { s.ed.TerminalAction(name) })
+}
+
+func (s *EditorService) DockerTab(name string) Frame {
+	return s.act(func() { s.ed.DockerTab(name) })
+}
+
+func (s *EditorService) DockerClick(i int) Frame {
+	return s.act(func() { s.ed.DockerClick(i) })
+}
+
+func (s *EditorService) DockerKey(key string) Frame {
+	return s.act(func() { s.ed.DockerKey(key) })
+}
+
 func (s *EditorService) act(fn func()) Frame {
 	s.mu.Lock()
 	defer s.mu.Unlock()
