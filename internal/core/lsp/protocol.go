@@ -50,6 +50,8 @@ type CompletionItem struct {
 	FilterText string    `json:"filterText,omitempty"`
 	SortText   string    `json:"sortText,omitempty"`
 	TextEdit   *TextEdit `json:"textEdit,omitempty"`
+
+	AdditionalTextEdits []TextEdit `json:"additionalTextEdits,omitempty"`
 }
 
 func (c CompletionItem) Text() string {

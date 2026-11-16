@@ -112,3 +112,52 @@ func TestEditorComGoplsDeVerdade(t *testing.T) {
 		t.Errorf("menu deveria sugerir Println: %v", labels)
 	}
 }
+
+func TestCompletionImportaComGoplsDeVerdade(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integracao com gopls (rode sem -short)")
+	}
+	if _, err := exec.LookPath("gopls"); err != nil {
+		t.Skip("gopls nao instalado")
+	}
+
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module probe\n\ngo 1.22\n"), 0o644)
+	path := filepath.Join(dir, "main.go")
+	const src = "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"ok\")\n}\n"
+	os.WriteFile(path, []byte(src), 0o644)
+
+	buf, err := buffer.Load(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ed := New(buf, path)
+	ed.HandleEvent(input.NewResizeEvent(90, 20))
+	ed.SetLanguageClient(lsp.Start(path, lsp.GoplsStarter))
+	defer ed.Close()
+	pumpUntil(t, ed, "gopls pronto", func() bool { return ed.lsp.ready })
+
+	typeKeys(t, ed, "5jo_ = strings.ToU")
+	pumpUntil(t, ed, "menu com ToUpper", func() bool {
+		if ed.comp == nil {
+			return false
+		}
+		for i, it := range ed.comp.items {
+			if it.Label == "ToUpper" {
+				ed.comp.sel = i
+				return true
+			}
+		}
+		return false
+	})
+	typeKeys(t, ed, "<CR><Esc>")
+
+	got := bufferText(ed)
+	t.Logf("depois de aceitar:\n%s", got)
+	if !strings.Contains(got, "\"strings\"") {
+		t.Fatalf("aceitar strings.ToUpper deveria importar o pacote:\n%s", got)
+	}
+	if !strings.Contains(string(ed.buf.Line(ed.cursor.Line)), "_ = strings.ToUpper") {
+		t.Errorf("o cursor deveria continuar na linha do ToUpper: %q", string(ed.buf.Line(ed.cursor.Line)))
+	}
+}

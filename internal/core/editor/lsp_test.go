@@ -398,3 +398,49 @@ func TestJanelaCortadaMostraReticencias(t *testing.T) {
 		t.Errorf("linha de reticencias com largura %d, esperava %d", small[3].Width(), box[0].Width())
 	}
 }
+
+func TestCompletionImportaPacote(t *testing.T) {
+	ed, fc := editorWithLSP(t, "package main\n\nfunc main() {\n\tçã := 1\n\t\n}\n")
+	typeKeys(t, ed, "jjjjAjson.Ma")
+	item := lsp.CompletionItem{
+		Label: "Marshal",
+		Kind:  3,
+		AdditionalTextEdits: []lsp.TextEdit{{
+			Range:   lsp.Range{Start: lsp.Position{Line: 2, Character: 0}, End: lsp.Position{Line: 2, Character: 0}},
+			NewText: "import \"encoding/json\"\n\n",
+		}},
+	}
+	ed.HandleAsync(lsp.CompletionEvent{ID: fc.lastID, Items: []lsp.CompletionItem{item}})
+	if ed.comp == nil {
+		t.Fatal("menu deveria abrir")
+	}
+	typeKeys(t, ed, "<CR>(x)")
+
+	want := "package main\n\nimport \"encoding/json\"\n\nfunc main() {\n\tçã := 1\n\tjson.Marshal(x)\n}"
+	if got := bufferText(ed); got != want {
+		t.Fatalf("texto:\n%s\nquero:\n%s", got, want)
+	}
+	if ed.cursor != pos(6, 16) {
+		t.Errorf("o cursor deveria descer junto com o import: %v", ed.cursor)
+	}
+
+	typeKeys(t, ed, "<Esc>u")
+	if got := bufferText(ed); strings.Contains(got, "json") {
+		t.Errorf("um u deveria desfazer o completion e o import juntos: %q", got)
+	}
+}
+
+func TestApplyEditsBeforeIgnoraEdicoesDepoisDoCursor(t *testing.T) {
+	ed, _ := editorWithLSP(t, "çã🦫x\nb\nc\n")
+	ed.cursor = pos(1, 1)
+	ed.applyEditsBefore(pos(1, 0), []lsp.TextEdit{
+		{Range: lsp.Range{Start: lsp.Position{Line: 2, Character: 0}, End: lsp.Position{Line: 2, Character: 1}}, NewText: "X"},
+		{Range: lsp.Range{Start: lsp.Position{Line: 0, Character: 4}, End: lsp.Position{Line: 0, Character: 5}}, NewText: "A1\nA2"},
+	})
+	if got := bufferText(ed); got != "çã🦫A1\nA2\nb\nc" {
+		t.Errorf("texto %q", got)
+	}
+	if ed.cursor != pos(2, 1) {
+		t.Errorf("cursor %v, quero 2:1", ed.cursor)
+	}
+}

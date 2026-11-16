@@ -104,7 +104,45 @@ func (e *Editor) acceptCompletion() {
 	e.comp = nil
 	e.buf.Delete(start, e.cursor)
 	e.cursor = e.buf.Insert(start, item.Text())
+	e.applyEditsBefore(start, item.AdditionalTextEdits)
 	e.wantCol = e.cursor.Col
+}
+
+type pendingEdit struct {
+	start, end buffer.Pos
+	text       string
+}
+
+func (e *Editor) applyEditsBefore(limit buffer.Pos, edits []lsp.TextEdit) {
+	var list []pendingEdit
+	for _, te := range edits {
+		start, end := e.fromLSP(te.Range.Start), e.fromLSP(te.Range.End)
+		if end.Before(start) || limit.Before(end) {
+			continue
+		}
+		list = append(list, pendingEdit{start: start, end: end, text: te.NewText})
+	}
+	sort.SliceStable(list, func(i, j int) bool { return list[j].start.Before(list[i].start) })
+	for _, ed := range list {
+		e.buf.Delete(ed.start, ed.end)
+		newEnd := e.buf.Insert(ed.start, ed.text)
+		e.cursor = shiftPos(e.cursor, ed.end, newEnd)
+	}
+}
+
+func (e *Editor) fromLSP(p lsp.Position) buffer.Pos {
+	if last := e.buf.LineCount() - 1; p.Line > last {
+		return buffer.Pos{Line: last, Col: e.buf.LineLen(last)}
+	}
+	return e.buf.ClampPos(lsp.FromPosition(e.buf.Line(p.Line), p))
+}
+
+func shiftPos(p, oldEnd, newEnd buffer.Pos) buffer.Pos {
+	if p.Line == oldEnd.Line {
+		p.Col += newEnd.Col - oldEnd.Col
+	}
+	p.Line += newEnd.Line - oldEnd.Line
+	return p
 }
 
 func (e *Editor) afterInsertKey(k input.Key) {
