@@ -2,6 +2,7 @@ package editor
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/gabrielcunha1232/gotextforge/internal/core/input"
@@ -64,6 +65,25 @@ func (e *Editor) closeTab() {
 
 func (e *Editor) OpenExplorer() {
 	e.openExplorer(false)
+}
+
+func (e *Editor) Root() string {
+	return e.projectRoot()
+}
+
+func (e *Editor) OpenFolder(dir string) {
+	e.escape()
+	if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
+		e.message = "pasta não encontrada: " + dir
+		return
+	}
+	e.SetRoot(dir)
+	e.term.cwd, e.term.prev = "", ""
+	e.openExplorer(false)
+	if e.dock.open {
+		e.startDockerRefresh()
+	}
+	e.message = "pasta do projeto: " + e.projectRoot()
 }
 
 func (e *Editor) ExplorerClick(path string) {

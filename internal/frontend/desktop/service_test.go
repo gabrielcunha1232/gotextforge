@@ -185,3 +185,37 @@ func TestAllowClose(t *testing.T) {
 		t.Error("respondendo não, o editor sai e o X é liberado")
 	}
 }
+
+func TestOpenFolder(t *testing.T) {
+	a, b := t.TempDir(), t.TempDir()
+	ed := editor.New(nil, "")
+	ed.SetRoot(a)
+	s := NewEditorService(ed, nil, nil)
+	s.Start(80, 24)
+
+	var start string
+	answer := ""
+	s.pickDir = func(dir string) (string, error) {
+		start = dir
+		if !s.mu.TryLock() {
+			t.Error("o diálogo não pode rodar com o mutex travado")
+		} else {
+			s.mu.Unlock()
+		}
+		return answer, nil
+	}
+
+	s.OpenFolder()
+	if start != ed.Root() || ed.Root() != a {
+		t.Fatalf("cancelar não deveria mudar nada: começou em %q, raiz %q", start, ed.Root())
+	}
+
+	answer = b
+	f := s.OpenFolder()
+	if ed.Root() != b {
+		t.Fatalf("raiz %q, quero %q", ed.Root(), b)
+	}
+	if !strings.Contains(string(f.UI), `"Root":`) {
+		t.Error("trocar de pasta muda o retrato; ele deveria vir no quadro")
+	}
+}

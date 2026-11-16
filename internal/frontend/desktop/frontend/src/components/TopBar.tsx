@@ -8,7 +8,12 @@ export function TopBar({ ui }: { ui: UIState | null }) {
       <div className="brand">
         <div className="mark">G</div>
         gotextforge
-        {project && <span className="project">{project}</span>}
+        {project && (
+          <span className="project click" title={`${ui?.Root}
+Clique para trocar de pasta (Ctrl Shift O)`} onClick={() => invoke("OpenFolder")}>
+            {project} ▾
+          </span>
+        )}
       </div>
       <div className="search" onClick={() => invoke("TogglePanel", "finder")}>
         <span>⌕　Buscar arquivo…</span>

@@ -185,6 +185,41 @@ kbd {
   margin-bottom: 12px;
 }
 
+.cap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cap-btn {
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.4px;
+  text-transform: none;
+  font-weight: 600;
+  color: var(--c-comment);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.cap-btn:hover {
+  color: var(--c-blue1);
+  border-color: var(--c-blue1);
+}
+
+.project.click {
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+.project.click:hover {
+  background: color-mix(in srgb, var(--c-blue1) 14%, transparent);
+}
+
 .proj {
   font-weight: 700;
   margin-bottom: 8px;

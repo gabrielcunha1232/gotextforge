@@ -94,6 +94,10 @@ export function sendKey(k: KeyInput) {
     invoke("TogglePanel", "finder");
     return;
   }
+  if (k.ctrl && k.shift && !k.alt && k.key.toLowerCase() === "o") {
+    invoke("OpenFolder");
+    return;
+  }
   const last = ops[ops.length - 1];
   if (last && last.method === "Keys") {
     (last.args[0] as KeyInput[]).push(k);

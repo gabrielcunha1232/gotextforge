@@ -31,7 +31,12 @@ export function Sidebar({ ui }: { ui: UIState }) {
 
   return (
     <aside className="side">
-      <div className="cap">Explorador</div>
+      <div className="cap">
+        Explorador
+        <button className="cap-btn" title="Abrir pasta… (Ctrl Shift O)" onClick={() => invoke("OpenFolder")}>
+          Abrir pasta…
+        </button>
+      </div>
       {rows.length === 0 ? (
         <div className="hint">Pasta vazia</div>
       ) : (

@@ -58,6 +58,8 @@ type EditorService struct {
 	emit   func(Frame)
 	cancel context.CancelFunc
 	lastUI []byte
+
+	pickDir func(start string) (string, error)
 }
 
 func NewEditorService(ed *editor.Editor, quit func(), emit func(Frame)) *EditorService {
@@ -166,6 +168,21 @@ func (s *EditorService) ClickText(row, col int) Frame {
 
 func (s *EditorService) ScrollText(delta int) Frame {
 	return s.act(func() { s.ed.ScrollText(delta) })
+}
+
+func (s *EditorService) OpenFolder() Frame {
+	if s.pickDir == nil {
+		return s.act(func() {})
+	}
+	s.mu.Lock()
+	start := s.ed.Root()
+	s.mu.Unlock()
+
+	dir, err := s.pickDir(start)
+	if err != nil || dir == "" {
+		return s.act(func() {})
+	}
+	return s.act(func() { s.ed.OpenFolder(dir) })
 }
 
 func (s *EditorService) allowClose() bool {

@@ -359,3 +359,33 @@ func TestRequestQuit(t *testing.T) {
 		t.Errorf("sim deveria salvar os 2 e sair: quit %v, salvos %d", ed.ShouldQuit(), saver.calls)
 	}
 }
+
+func TestOpenFolder(t *testing.T) {
+	a, b := t.TempDir(), t.TempDir()
+	os.WriteFile(filepath.Join(a, "a.go"), []byte("package a\n"), 0o644)
+	os.WriteFile(filepath.Join(b, "b.go"), []byte("package b\n"), 0o644)
+
+	ed := New(nil, "")
+	ed.HandleEvent(input.NewResizeEvent(100, 30))
+	ed.SetRoot(a)
+	ed.OpenExplorer()
+	ed.term.cwd = filepath.Join(a, "sub")
+	typeKeys(t, ed, "i")
+
+	ed.OpenFolder(b)
+	if !samePath(ed.Root(), b) || ed.mode != ModeNormal {
+		t.Fatalf("raiz %q modo %v, quero %q em NORMAL", ed.Root(), ed.mode, b)
+	}
+	ui := ed.UI()
+	if len(ui.Explorer.Rows) != 1 || ui.Explorer.Rows[0].Name != "b.go" {
+		t.Errorf("a árvore deveria mostrar a pasta nova: %+v", ui.Explorer.Rows)
+	}
+	if ed.terminalDir() != ed.Root() {
+		t.Errorf("o terminal deveria seguir a pasta nova: %q", ed.terminalDir())
+	}
+
+	ed.OpenFolder(filepath.Join(b, "b.go"))
+	if !samePath(ed.Root(), b) || !strings.Contains(ed.message, "não encontrada") {
+		t.Errorf("um arquivo não é pasta: raiz %q, mensagem %q", ed.Root(), ed.message)
+	}
+}

@@ -47,6 +47,16 @@ func Run(ed *editor.Editor) error {
 		BackgroundColour: application.NewRGB(0x0b, 0x0e, 0x13),
 		URL:              "/",
 	})
+	service.pickDir = func(start string) (string, error) {
+		return app.Dialog.OpenFile().
+			CanChooseFiles(false).
+			CanChooseDirectories(true).
+			CanCreateDirectories(true).
+			SetTitle("Abrir pasta").
+			SetDirectory(start).
+			AttachToWindow(window).
+			PromptForSingleSelection()
+	}
 	window.RegisterHook(events.Common.WindowClosing, func(ev *application.WindowEvent) {
 		if !service.allowClose() {
 			ev.Cancel()
