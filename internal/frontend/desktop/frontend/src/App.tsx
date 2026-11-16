@@ -14,9 +14,9 @@ export function App() {
   return (
     <div className="shell">
       <TopBar ui={ui} />
-      <div className="layout">
-        <Rail focus={ui?.Focus ?? "editor"} bottom={ui?.Bottom ?? ""} />
-        <Sidebar ui={ui} />
+      <div className={ui?.Explorer.Open ? "layout" : "layout no-side"}>
+        <Rail ui={ui} />
+        {ui?.Explorer.Open && <Sidebar ui={ui} />}
         <main className="center">
           <Tabs ui={ui} />
           <EditorView />

@@ -102,6 +102,10 @@ kbd {
   grid-template-columns: 52px 250px minmax(300px, 1fr);
 }
 
+.layout.no-side {
+  grid-template-columns: 52px minmax(300px, 1fr);
+}
+
 .rail {
   background: var(--c-bg-float);
   border-right: 1px solid var(--line);
@@ -122,6 +126,19 @@ kbd {
   font-size: 18px;
 }
 
+.rail span {
+  cursor: pointer;
+}
+
+.rail span:hover {
+  color: var(--c-fg);
+  background: var(--c-bg-highlight);
+}
+
+.rail .open {
+  color: var(--c-fg);
+}
+
 .rail .sel {
   color: var(--accent);
   background: var(--c-bg-sel);
@@ -136,8 +153,27 @@ kbd {
 .side {
   background: var(--panel);
   border-right: 1px solid var(--line);
-  padding: 14px 10px;
+  padding: 14px 8px 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.side .tree {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-gutter) transparent;
+}
+
+.side-keys {
+  flex: none;
+  padding: 8px 4px;
+  border-top: 1px solid var(--line);
+  font-size: 10px;
+  color: var(--c-comment);
+  line-height: 2;
 }
 
 .cap {
@@ -171,6 +207,55 @@ kbd {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
+  padding-right: 6px;
+}
+
+.tree .row:hover {
+  background: var(--c-bg-float);
+  color: var(--c-fg);
+}
+
+.tree .icon {
+  display: inline-block;
+  width: 22px;
+  margin-right: 4px;
+  text-align: center;
+  font: 700 9.5px var(--mono);
+}
+
+.ic-go {
+  color: var(--c-blue);
+}
+
+.ic-test {
+  color: var(--c-green);
+}
+
+.ic-mod {
+  color: var(--c-magenta);
+  font-size: 12px !important;
+}
+
+.ic-md {
+  color: var(--c-blue1);
+}
+
+.ic-docker {
+  color: var(--c-blue1);
+  font-size: 12px !important;
+}
+
+.ic-data,
+.ic-script {
+  color: var(--c-yellow);
+}
+
+.ic-bin,
+.ic-hidden,
+.ic-file {
+  color: var(--c-dark3);
+  font-size: 12px !important;
 }
 
 .tree .twisty {

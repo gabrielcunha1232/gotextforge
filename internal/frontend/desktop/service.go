@@ -124,6 +124,14 @@ func (s *EditorService) CloseTab(i int) Frame {
 	return s.act(func() { s.ed.CloseTab(i) })
 }
 
+func (s *EditorService) ExplorerClick(path string) Frame {
+	return s.act(func() { s.ed.ExplorerClick(path) })
+}
+
+func (s *EditorService) TogglePanel(name string) Frame {
+	return s.act(func() { s.ed.TogglePanel(name) })
+}
+
 func (s *EditorService) act(fn func()) Frame {
 	s.mu.Lock()
 	defer s.mu.Unlock()

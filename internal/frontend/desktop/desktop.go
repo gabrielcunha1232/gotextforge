@@ -18,6 +18,7 @@ func Run(ed *editor.Editor) error {
 	}
 
 	ed.SetExternalChrome(true)
+	ed.OpenExplorer()
 
 	var app *application.App
 	service := NewEditorService(ed,

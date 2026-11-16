@@ -1,3 +1,4 @@
+import { invoke } from "../bridge";
 import type { UIState } from "../types";
 
 const ITEMS = [
@@ -7,13 +8,16 @@ const ITEMS = [
   { id: "docker", icon: "◳", title: "Docker (Espaço d o)" },
 ];
 
-export function Rail({ focus, bottom }: { focus: UIState["Focus"]; bottom: UIState["Bottom"] }) {
+export function Rail({ ui }: { ui: UIState | null }) {
+  const focus = ui?.Focus ?? "editor";
   return (
     <aside className="rail">
       {ITEMS.map((it) => {
-        const active = focus === it.id || bottom === it.id;
+        const open =
+          (it.id === "explorer" && ui?.Explorer.Open) || (ui?.Bottom === it.id) || (it.id === "finder" && ui?.Finder);
+        const cls = [focus === it.id ? "sel" : "", open ? "open" : ""].join(" ");
         return (
-          <span key={it.id} className={active ? "sel" : ""} title={it.title}>
+          <span key={it.id} className={cls} title={it.title} onClick={() => invoke("TogglePanel", it.id)}>
             {it.icon}
           </span>
         );

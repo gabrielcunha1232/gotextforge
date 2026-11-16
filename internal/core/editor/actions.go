@@ -59,3 +59,52 @@ func (e *Editor) closeTab() {
 	e.document = doc
 	e.layout()
 }
+
+func (e *Editor) OpenExplorer() {
+	e.openExplorer(false)
+}
+
+func (e *Editor) ExplorerClick(path string) {
+	e.escape()
+	e.openExplorer(false)
+	if !e.selectPath(path) {
+		return
+	}
+	n := e.selectedNode()
+	e.explorerOpenNode(n, true)
+	if n.dir {
+		e.mode = ModeExplorer
+	}
+}
+
+func (e *Editor) TogglePanel(name string) {
+	was := e.mode
+	e.escape()
+	switch name {
+	case "explorer":
+		if e.explorer.open && was == ModeExplorer {
+			e.explorer.open = false
+		} else {
+			e.openExplorer(true)
+		}
+	case "terminal":
+		if e.term.open && was == ModeTerminal {
+			e.closeTerminal()
+		} else {
+			e.openTerminal(true)
+		}
+	case "docker":
+		switch {
+		case !e.dock.open:
+			e.openDocker()
+		case was == ModeDocker:
+			e.closeDocker()
+		default:
+			e.mode = ModeDocker
+		}
+	case "finder":
+		if was != ModeFinder {
+			e.openFileFinder()
+		}
+	}
+}
