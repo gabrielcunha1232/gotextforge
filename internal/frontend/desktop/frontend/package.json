@@ -9,5 +9,8 @@
   "devDependencies": {
     "typescript": "^5.2.2",
     "vite": "^8.2.4"
+  },
+  "dependencies": {
+    "@wailsio/runtime": "3.0.0"
   }
 }

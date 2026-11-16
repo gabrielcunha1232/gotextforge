@@ -19,6 +19,9 @@ func Run(ed *editor.Editor) error {
 
 	app := application.New(application.Options{
 		Name: "gotextforge",
+		Services: []application.Service{
+			application.NewService(NewEditorService(ed)),
+		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(dist),
 		},
