@@ -116,6 +116,22 @@ func (s *EditorService) Keys(keys []KeyInput) Frame {
 	return s.frame()
 }
 
+func (s *EditorService) SwitchTab(i int) Frame {
+	return s.act(func() { s.ed.SwitchTab(i) })
+}
+
+func (s *EditorService) CloseTab(i int) Frame {
+	return s.act(func() { s.ed.CloseTab(i) })
+}
+
+func (s *EditorService) act(fn func()) Frame {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	fn()
+	s.checkQuit()
+	return s.frame()
+}
+
 func (s *EditorService) handleAsync(ev any) Frame {
 	s.mu.Lock()
 	defer s.mu.Unlock()

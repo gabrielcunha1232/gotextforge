@@ -2,6 +2,8 @@ package desktop
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -131,5 +133,27 @@ func TestTheme(t *testing.T) {
 	th := NewEditorService(editor.New(nil, ""), nil, nil).Theme()
 	if th["bg"] != "#0b0e13" || th["mode-normal"] == "" || th["mode-insert"] == "" {
 		t.Errorf("tema = %v", th)
+	}
+}
+
+func TestAcoesDeAba(t *testing.T) {
+	dir := t.TempDir()
+	a, b := filepath.Join(dir, "a.go"), filepath.Join(dir, "b.go")
+	os.WriteFile(a, []byte("package a\n"), 0o644)
+	os.WriteFile(b, []byte("package b\n"), 0o644)
+
+	ed := editor.New(nil, "")
+	ed.OpenFile(a)
+	ed.OpenFile(b)
+	s := NewEditorService(ed, nil, nil)
+	s.Start(80, 24)
+
+	f := s.SwitchTab(0)
+	if !strings.Contains(string(f.UI), `"Name":"a.go","Path":`) || ed.UI().Status.File != "a.go" {
+		t.Fatalf("SwitchTab(0) deveria ativar a.go: %s", f.UI)
+	}
+	f = s.CloseTab(0)
+	if tabs := ed.UI().Tabs; len(tabs) != 1 || tabs[0].Name != "b.go" || len(f.UI) == 0 {
+		t.Errorf("CloseTab(0) deveria deixar só b.go: %+v", tabs)
 	}
 }

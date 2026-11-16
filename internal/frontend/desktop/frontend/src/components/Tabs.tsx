@@ -1,14 +1,49 @@
+import { useEffect, useRef } from "react";
+import { invoke } from "../bridge";
 import type { UIState } from "../types";
 
 export function Tabs({ ui }: { ui: UIState | null }) {
   const tabs = ui?.Tabs ?? [];
+  const bar = useRef<HTMLDivElement>(null);
+  const active = tabs.findIndex((t) => t.Active);
+
+  useEffect(() => {
+    bar.current?.querySelector(".tab.active")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [active, tabs.length]);
+
   return (
     <>
-      <div className="tabs">
+      <div
+        className="tabs"
+        ref={bar}
+        onWheel={(e) => {
+          bar.current!.scrollLeft += e.deltaY;
+        }}
+      >
         {tabs.map((t, i) => (
-          <div key={t.Path || i} className={t.Active ? "tab active" : "tab"} title={t.Path}>
-            {t.Name}
-            {t.Modified && <span className="dot">●</span>}
+          <div
+            key={`${t.Path}-${i}`}
+            className={t.Active ? "tab active" : "tab"}
+            title={t.Path || t.Name}
+            onClick={() => invoke("SwitchTab", i)}
+            onAuxClick={(e) => {
+              if (e.button === 1) {
+                invoke("CloseTab", i);
+              }
+            }}
+          >
+            <span className="name">{t.Name}</span>
+            <span
+              className={t.Modified ? "close modified" : "close"}
+              title="Fechar (botão do meio também fecha)"
+              onClick={(e) => {
+                e.stopPropagation();
+                invoke("CloseTab", i);
+              }}
+            >
+              <span className="dot">●</span>
+              <span className="x">×</span>
+            </span>
           </div>
         ))}
       </div>

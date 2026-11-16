@@ -32,7 +32,9 @@ let renderer: Renderer | null = null;
 let canvas: HTMLCanvasElement | null = null;
 let textarea: HTMLTextAreaElement | null = null;
 
-let pendingKeys: KeyInput[] = [];
+type Op = { method: string; args: unknown[] };
+
+let ops: Op[] = [];
 let pendingResize: "start" | "resize" | null = null;
 let busy = false;
 let lastSeq = 0;
@@ -68,7 +70,7 @@ async function pump() {
   }
   busy = true;
   try {
-    while (pendingResize || pendingKeys.length > 0) {
+    while (pendingResize || ops.length > 0) {
       let frame: Frame;
       if (pendingResize) {
         const method = pendingResize === "start" ? "Start" : "Resize";
@@ -76,9 +78,8 @@ async function pump() {
         const { cols, rows } = grid();
         frame = await call<Frame>(method, cols, rows);
       } else {
-        const keys = pendingKeys;
-        pendingKeys = [];
-        frame = await call<Frame>("Keys", keys);
+        const op = ops.shift()!;
+        frame = await call<Frame>(op.method, ...op.args);
       }
       show(frame);
     }
@@ -88,7 +89,17 @@ async function pump() {
 }
 
 export function sendKey(k: KeyInput) {
-  pendingKeys.push(k);
+  const last = ops[ops.length - 1];
+  if (last && last.method === "Keys") {
+    (last.args[0] as KeyInput[]).push(k);
+  } else {
+    ops.push({ method: "Keys", args: [[k]] });
+  }
+  pump();
+}
+
+export function invoke(method: string, ...args: unknown[]) {
+  ops.push({ method, args });
   pump();
 }
 

@@ -211,11 +211,14 @@ kbd {
   display: flex;
   background: var(--panel);
   border-bottom: 1px solid var(--line);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
 }
 
 .tab {
-  padding: 0 16px;
+  padding: 0 8px 0 16px;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -230,9 +233,61 @@ kbd {
   box-shadow: inset 0 2px var(--accent);
 }
 
-.tab .dot {
+.tab:hover {
+  color: var(--c-fg-dark);
+  background: var(--c-bg-float);
+}
+
+.tab.active:hover {
+  color: var(--c-fg);
+  background: var(--c-bg);
+}
+
+.tab .close {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+}
+
+.tab .close > span {
+  grid-area: 1 / 1;
+}
+
+.tab .close .dot {
   color: var(--c-orange);
   font-size: 10px;
+  visibility: hidden;
+}
+
+.tab .close .x {
+  font-size: 15px;
+  line-height: 1;
+  visibility: hidden;
+}
+
+.tab .close.modified .dot {
+  visibility: visible;
+}
+
+.tab.active .close .x,
+.tab:hover .close .x {
+  visibility: visible;
+}
+
+.tab.active .close.modified .x,
+.tab:hover .close.modified .dot {
+  visibility: hidden;
+}
+
+.tab:hover .close.modified .x {
+  visibility: visible;
+}
+
+.tab .close:hover {
+  background: var(--c-bg-highlight);
+  color: var(--c-fg);
 }
 
 .crumb {
