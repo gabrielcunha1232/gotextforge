@@ -34,18 +34,38 @@ type Frame struct {
 }
 
 type EditorService struct {
-	mu sync.Mutex
-	ed *editor.Editor
+	mu   sync.Mutex
+	ed   *editor.Editor
+	quit func()
 }
 
-func NewEditorService(ed *editor.Editor) *EditorService {
-	return &EditorService{ed: ed}
+func NewEditorService(ed *editor.Editor, quit func()) *EditorService {
+	return &EditorService{ed: ed, quit: quit}
 }
 
 func (s *EditorService) Resize(cols, rows int) Frame {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.ed.HandleEvent(input.NewResizeEvent(cols, rows))
+	return toFrame(s.ed.Frame())
+}
+
+func (s *EditorService) Keys(keys []KeyInput) Frame {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, k := range keys {
+		key, ok := translateKey(k)
+		if !ok {
+			continue
+		}
+		s.ed.HandleEvent(input.NewKeyEvent(key))
+		if s.ed.ShouldQuit() {
+			if s.quit != nil {
+				go s.quit()
+			}
+			break
+		}
+	}
 	return toFrame(s.ed.Frame())
 }
 

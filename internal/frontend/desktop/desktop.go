@@ -17,10 +17,13 @@ func Run(ed *editor.Editor) error {
 		return err
 	}
 
-	app := application.New(application.Options{
+	var app *application.App
+	service := NewEditorService(ed, func() { app.Quit() })
+
+	app = application.New(application.Options{
 		Name: "gotextforge",
 		Services: []application.Service{
-			application.NewService(NewEditorService(ed)),
+			application.NewService(service),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(dist),
