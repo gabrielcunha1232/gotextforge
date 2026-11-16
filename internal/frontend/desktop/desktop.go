@@ -6,6 +6,7 @@ import (
 
 	"github.com/gabrielcunha1232/gotextforge/internal/core/editor"
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 //go:embed all:frontend/dist
@@ -39,12 +40,17 @@ func Run(ed *editor.Editor) error {
 		},
 	})
 
-	app.Window.NewWithOptions(application.WebviewWindowOptions{
+	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:            "gotextforge",
 		Width:            1400,
 		Height:           900,
 		BackgroundColour: application.NewRGB(0x0b, 0x0e, 0x13),
 		URL:              "/",
+	})
+	window.RegisterHook(events.Common.WindowClosing, func(ev *application.WindowEvent) {
+		if !service.allowClose() {
+			ev.Cancel()
+		}
 	})
 
 	return app.Run()

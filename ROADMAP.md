@@ -70,7 +70,7 @@ gotextforge/
 | MS | Entrega | Critério de aceite |
 |---|---|---|
 | 7 | ✅ Spike descartável: canvas no Wails renderizando `Frame` | Digitação sem lag num arquivo de 5k linhas — **passou** (tecla→tela p50 16,6 ms, 2026-11-16) |
-| 8 | Shell Wails v3 no estilo do protótipo do humano (tema Marca Go): abas, file tree, painel de baixo, status bar | O mesmo core roda no desktop |
+| 8 | ✅ Shell Wails v3 no estilo do protótipo do humano (tema Marca Go): abas, file tree, painel de baixo, status bar | O mesmo core roda no desktop — **feito** (2026-11-16) |
 | 9 | Integração + polimento | Distribuição binária pra Windows/macOS/Linux |
 
 ## Cortes deliberados da v1 (listas pra dizer "não")

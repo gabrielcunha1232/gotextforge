@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { attachEditor } from "../bridge";
+import { attachEditor, clickText, wheelText } from "../bridge";
 
 export function EditorView() {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -16,7 +16,15 @@ export function EditorView() {
 
   return (
     <section className="editor">
-      <canvas ref={canvas} />
+      <canvas
+        ref={canvas}
+        onMouseDown={(e) => {
+          if (e.button === 0) {
+            clickText(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+          }
+        }}
+        onWheel={(e) => wheelText(e.deltaY, e.deltaMode)}
+      />
       <textarea
         ref={textarea}
         className="keys"

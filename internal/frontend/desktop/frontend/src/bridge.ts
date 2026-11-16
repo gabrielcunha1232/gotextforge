@@ -104,8 +104,31 @@ export function sendKey(k: KeyInput) {
 }
 
 export function invoke(method: string, ...args: unknown[]) {
-  ops.push({ method, args });
+  const last = ops[ops.length - 1];
+  if (method === "ScrollText" && last && last.method === "ScrollText") {
+    last.args[0] = (last.args[0] as number) + (args[0] as number);
+  } else {
+    ops.push({ method, args });
+  }
   pump();
+}
+
+export function clickText(x: number, y: number) {
+  if (!renderer) return;
+  invoke("ClickText", Math.floor(y / renderer.cell.h), Math.floor(x / renderer.cell.w));
+}
+
+let wheelAcc = 0;
+
+export function wheelText(deltaY: number, deltaMode: number) {
+  if (!renderer) return;
+  const px = deltaMode === 1 ? deltaY * renderer.cell.h : deltaMode === 2 ? deltaY * canvas!.clientHeight : deltaY;
+  wheelAcc += px;
+  const lines = Math.trunc(wheelAcc / renderer.cell.h);
+  if (lines !== 0) {
+    wheelAcc -= lines * renderer.cell.h;
+    invoke("ScrollText", lines);
+  }
 }
 
 export async function loadTheme() {

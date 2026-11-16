@@ -115,3 +115,18 @@ func controlNotation(r rune) []rune {
 		return []rune{'^', r + 64}
 	}
 }
+
+func RuneColAt(runes []rune, screenCol, tabStop int) int {
+	if tabStop <= 0 {
+		tabStop = DefaultTabStop
+	}
+	col := 0
+	for i, r := range runes {
+		w := cellWidth(r, col, tabStop)
+		if screenCol < col+w {
+			return i
+		}
+		col += w
+	}
+	return len(runes)
+}

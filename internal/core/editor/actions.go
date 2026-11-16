@@ -6,6 +6,7 @@ import (
 
 	"github.com/gabrielcunha1232/gotextforge/internal/core/input"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/runner"
+	"github.com/gabrielcunha1232/gotextforge/internal/core/view"
 )
 
 func (e *Editor) escape() {
@@ -181,4 +182,70 @@ func (e *Editor) FinderClick(i int) {
 	}
 	f.sel = i
 	e.handleFinderKey(input.Key{Code: input.KeyEnter})
+}
+
+func (e *Editor) ClickText(row, col int) {
+	if e.mode == ModeInsert {
+		e.comp = nil
+		e.hover = nil
+	} else {
+		e.escape()
+	}
+	if e.mode != ModeNormal && e.mode != ModeInsert {
+		return
+	}
+	row -= e.tablineRows()
+	if row < 0 || row >= e.viewport.Height {
+		return
+	}
+	total := e.buf.LineCount()
+	start, _ := e.viewport.VisibleRange(total)
+	line := min(start+row, total-1)
+	runeCol := view.RuneColAt(e.buf.Line(line), max(col-e.gutterWidth(), 0), view.DefaultTabStop)
+	e.cursor.Line = line
+	e.setCol(min(runeCol, e.maxCol(line)))
+	e.syncLanguageServer()
+}
+
+func (e *Editor) ScrollText(delta int) {
+	total := e.buf.LineCount()
+	e.viewport.Scroll(delta, total)
+	start, end := e.viewport.VisibleRange(total)
+	switch {
+	case e.cursor.Line < start:
+		e.moveToLine(start)
+	case end > 0 && e.cursor.Line > end-1:
+		e.moveToLine(end - 1)
+	}
+}
+
+func (e *Editor) RequestQuit() {
+	e.escape()
+	var names []string
+	for _, d := range e.docs {
+		if d.buf.Modified() {
+			names = append(names, d.filename)
+		}
+	}
+	if len(names) == 0 {
+		e.quit = true
+		return
+	}
+	what := names[0] + " tem"
+	if len(names) > 1 {
+		what = fmt.Sprintf("%d arquivos têm", len(names))
+	}
+	label := what + " alterações. Salvar tudo antes de sair? (s)im, (n)ão, (c)ancelar: "
+	e.openPrompt(label, "", func(answer string) {
+		switch strings.ToLower(strings.TrimSpace(answer)) {
+		case "s", "sim":
+			if e.writeAll() {
+				e.quit = true
+			}
+		case "n", "não", "nao":
+			e.quit = true
+		default:
+			e.message = "sair cancelado"
+		}
+	})
 }

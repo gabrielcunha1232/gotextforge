@@ -276,3 +276,86 @@ func TestFinderNaMolduraExterna(t *testing.T) {
 		t.Errorf("clicar em + criar deveria criar e abrir novo.go: %v, aba %q", err, ed.path)
 	}
 }
+
+func TestClickText(t *testing.T) {
+	src := "package a\n\nfunc f() {\n\tx := 1\n}\n"
+	ed, _ := editorWithFiles(t, map[string]string{"a.go": src}, "a.go")
+	ed.SetExternalChrome(true)
+	gw := ed.gutterWidth()
+
+	ed.ClickText(3, gw+5)
+	if ed.cursor.Line != 3 || ed.cursor.Col != 2 {
+		t.Errorf("clique depois da tab: cursor %+v, quero linha 3 coluna 2", ed.cursor)
+	}
+	ed.ClickText(3, gw+2)
+	if ed.cursor.Col != 0 {
+		t.Errorf("clique no meio da tab deveria cair na tab: %+v", ed.cursor)
+	}
+	ed.ClickText(0, gw+80)
+	if ed.cursor.Line != 0 || ed.cursor.Col != 8 {
+		t.Errorf("clique depois do fim da linha (modo normal) para no último caractere: %+v", ed.cursor)
+	}
+	ed.ClickText(20, 0)
+	if ed.cursor.Line != 4 {
+		t.Errorf("clique abaixo do texto vai para a última linha: %+v", ed.cursor)
+	}
+
+	typeKeys(t, ed, "ggi")
+	ed.ClickText(0, gw+80)
+	if ed.mode != ModeInsert || ed.cursor.Col != 9 {
+		t.Errorf("no insert, o clique mantém o modo e pode ir até depois do último caractere: modo %v %+v", ed.mode, ed.cursor)
+	}
+	typeKeys(t, ed, "<Esc>:")
+	ed.ClickText(1, gw)
+	if ed.mode != ModeNormal || ed.cursor.Line != 1 {
+		t.Errorf("clique com : aberto cancela o comando e posiciona: modo %v %+v", ed.mode, ed.cursor)
+	}
+}
+
+func TestScrollText(t *testing.T) {
+	var sb strings.Builder
+	for i := 0; i < 100; i++ {
+		sb.WriteString("linha\n")
+	}
+	ed, _ := editorWithFiles(t, map[string]string{"a.txt": sb.String()}, "a.txt")
+	ed.SetExternalChrome(true)
+
+	ed.ScrollText(10)
+	if ed.viewport.Top != 10 || ed.cursor.Line != 10 {
+		t.Errorf("rolar 10 deveria levar o topo e o cursor para a linha 10: topo %d cursor %d", ed.viewport.Top, ed.cursor.Line)
+	}
+	ed.ScrollText(-5)
+	if ed.viewport.Top != 5 || ed.cursor.Line != 10 {
+		t.Errorf("rolar para cima com o cursor visível não deveria mexer nele: topo %d cursor %d", ed.viewport.Top, ed.cursor.Line)
+	}
+	ed.ScrollText(1000)
+	if ed.cursor.Line < ed.viewport.Top {
+		t.Errorf("cursor fora da tela depois de rolar até o fim: topo %d cursor %d", ed.viewport.Top, ed.cursor.Line)
+	}
+}
+
+func TestRequestQuit(t *testing.T) {
+	ed, saver := editorWithFiles(t, map[string]string{"a.go": "package a\n", "b.go": "package b\n"}, "a.go", "b.go")
+	ed.RequestQuit()
+	if !ed.ShouldQuit() {
+		t.Fatal("sem alterações, deveria sair direto")
+	}
+
+	ed, saver = editorWithFiles(t, map[string]string{"a.go": "package a\n", "b.go": "package b\n"}, "a.go", "b.go")
+	typeKeys(t, ed, "Ax<Esc>")
+	ed.SwitchTab(0)
+	typeKeys(t, ed, "Ay<Esc>")
+	ed.RequestQuit()
+	if ed.ShouldQuit() || !strings.Contains(ed.Frame().Status.Text(), "2 arquivos têm alterações") {
+		t.Fatalf("deveria perguntar: %q", ed.Frame().Status.Text())
+	}
+	typeKeys(t, ed, "c<CR>")
+	if ed.ShouldQuit() {
+		t.Fatal("cancelar não deveria sair")
+	}
+	ed.RequestQuit()
+	typeKeys(t, ed, "s<CR>")
+	if !ed.ShouldQuit() || saver.calls != 2 {
+		t.Errorf("sim deveria salvar os 2 e sair: quit %v, salvos %d", ed.ShouldQuit(), saver.calls)
+	}
+}

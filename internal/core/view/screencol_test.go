@@ -87,3 +87,20 @@ func TestEnsureVisible(t *testing.T) {
 		})
 	}
 }
+
+func TestRuneColAt(t *testing.T) {
+	line := []rune("\tx := \"ação\"")
+	cases := []struct{ screen, want int }{
+		{0, 0}, {3, 0}, {4, 1}, {5, 2}, {10, 7}, {14, 11}, {15, 12}, {99, 12},
+	}
+	for _, c := range cases {
+		if got := RuneColAt(line, c.screen, 4); got != c.want {
+			t.Errorf("RuneColAt(%d) = %d, quero %d", c.screen, got, c.want)
+		}
+	}
+	for i := range line {
+		if got := RuneColAt(line, ScreenCol(line, i, 4), 4); got != i {
+			t.Errorf("ida e volta da rune %d deu %d", i, got)
+		}
+	}
+}

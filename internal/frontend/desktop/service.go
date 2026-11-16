@@ -160,6 +160,30 @@ func (s *EditorService) FinderClick(i int) Frame {
 	return s.act(func() { s.ed.FinderClick(i) })
 }
 
+func (s *EditorService) ClickText(row, col int) Frame {
+	return s.act(func() { s.ed.ClickText(row, col) })
+}
+
+func (s *EditorService) ScrollText(delta int) Frame {
+	return s.act(func() { s.ed.ScrollText(delta) })
+}
+
+func (s *EditorService) allowClose() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.ed.ShouldQuit() {
+		return true
+	}
+	s.ed.RequestQuit()
+	if s.ed.ShouldQuit() {
+		return true
+	}
+	if s.emit != nil {
+		s.emit(s.frame())
+	}
+	return false
+}
+
 func (s *EditorService) act(fn func()) Frame {
 	s.mu.Lock()
 	defer s.mu.Unlock()

@@ -157,3 +157,31 @@ func TestAcoesDeAba(t *testing.T) {
 		t.Errorf("CloseTab(0) deveria deixar só b.go: %+v", tabs)
 	}
 }
+
+func TestAllowClose(t *testing.T) {
+	dir := t.TempDir()
+	a := filepath.Join(dir, "a.go")
+	os.WriteFile(a, []byte("package a\n"), 0o644)
+	ed := editor.New(nil, "")
+	ed.OpenFile(a)
+	var emitted int
+	s := NewEditorService(ed, nil, func(Frame) { emitted++ })
+	s.Start(80, 24)
+
+	if !s.allowClose() {
+		t.Fatal("sem alterações, o X deveria fechar")
+	}
+
+	ed = editor.New(nil, "")
+	ed.OpenFile(a)
+	s = NewEditorService(ed, nil, func(Frame) { emitted++ })
+	s.Start(80, 24)
+	s.Keys([]KeyInput{{Key: "A"}, {Key: "x"}, {Key: "Escape"}})
+	if s.allowClose() || emitted != 1 {
+		t.Fatalf("com alteração, o X deveria ser cancelado e a pergunta enviada: emitidos %d", emitted)
+	}
+	s.Keys([]KeyInput{{Key: "n"}, {Key: "Enter"}})
+	if !ed.ShouldQuit() || !s.allowClose() {
+		t.Error("respondendo não, o editor sai e o X é liberado")
+	}
+}

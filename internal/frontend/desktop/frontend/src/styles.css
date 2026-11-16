@@ -398,6 +398,7 @@ kbd {
 }
 
 .editor canvas {
+  cursor: text;
   position: absolute;
   inset: 0;
   width: 100%;
