@@ -3,7 +3,7 @@ package buffer
 import (
 	"bufio"
 	"io"
-	"strings"
+	"unicode/utf8"
 )
 
 func (b *Buffer) WriteTo(w io.Writer) (int64, error) {
@@ -50,22 +50,40 @@ func (b *Buffer) WriteTo(w io.Writer) (int64, error) {
 func (b *Buffer) PlainText() string {
 	n := len(b.lines)
 	for _, l := range b.lines {
-		n += len(l)
+		for _, r := range l {
+			if uint32(r) < utf8.RuneSelf {
+				n++
+			} else {
+				n += runeLen(r)
+			}
+		}
 	}
-	var sb strings.Builder
-	sb.Grow(n)
+	buf := make([]byte, 0, n)
 	for i, l := range b.lines {
 		if i > 0 {
-			sb.WriteByte('\n')
+			buf = append(buf, '\n')
 		}
-		sb.WriteString(string(l))
+		for _, r := range l {
+			if uint32(r) < utf8.RuneSelf {
+				buf = append(buf, byte(r))
+			} else {
+				buf = utf8.AppendRune(buf, r)
+			}
+		}
 	}
 	if b.finalNewline {
-		sb.WriteByte('\n')
+		buf = append(buf, '\n')
 	}
-	return sb.String()
+	return string(buf)
 }
 
 func (b *Buffer) HasInvalidUTF8() bool {
 	return b.invalidUTF8
+}
+
+func runeLen(r rune) int {
+	if n := utf8.RuneLen(r); n > 0 {
+		return n
+	}
+	return utf8.RuneLen(utf8.RuneError)
 }

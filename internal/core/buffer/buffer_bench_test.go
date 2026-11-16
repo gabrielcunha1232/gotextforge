@@ -44,3 +44,19 @@ func BenchmarkInsertRuneLinhaGigante(b *testing.B) {
 		buf.Delete(Pos{Line: 0, Col: 50_000}, end)
 	}
 }
+
+func BenchmarkPlainText5k(b *testing.B) {
+	var src bytes.Buffer
+	for i := 0; i < 5_000; i++ {
+		fmt.Fprintf(&src, "\tif err := process(ctx, %d); err != nil { return err } // ação\n", i)
+	}
+	buf, err := Load(bytes.NewReader(src.Bytes()))
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.SetBytes(int64(src.Len()))
+	b.ReportAllocs()
+	for b.Loop() {
+		_ = buf.PlainText()
+	}
+}

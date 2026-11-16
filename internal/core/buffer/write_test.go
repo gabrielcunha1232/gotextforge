@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 func writeString(t *testing.T, b *Buffer) string {
@@ -143,5 +144,37 @@ func TestPlainTextEVersion(t *testing.T) {
 	v3 := b.Version()
 	if !(v1 < v2 && v2 < v3) {
 		t.Errorf("Version deveria crescer a cada mudanca, inclusive undo: %d %d %d", v1, v2, v3)
+	}
+}
+
+func TestPlainTextIgualAoJeitoSimples(t *testing.T) {
+	srcs := []string{
+		"",
+		"a",
+		"a\n",
+		"ação\r\nlinha 2\r\n",
+		"emoji 🦫 e 中文\nsem fim",
+		"a\xffb\n\xe7\xe3o\n",
+		"\n\n\n",
+		"\xef\xbb\xbfcom BOM\n",
+	}
+	for _, src := range srcs {
+		b := mustLoad(t, src)
+		b.Insert(Pos{}, "\U0010FFFF")
+		b.lines[0] = append(b.lines[0], 0xD800, -1, utf8.MaxRune+1)
+
+		var sb strings.Builder
+		for i, l := range b.lines {
+			if i > 0 {
+				sb.WriteByte('\n')
+			}
+			sb.WriteString(string(l))
+		}
+		if b.finalNewline {
+			sb.WriteByte('\n')
+		}
+		if got, want := b.PlainText(), sb.String(); got != want {
+			t.Errorf("src %q: PlainText = %q, esperava %q", src, got, want)
+		}
 	}
 }

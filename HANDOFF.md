@@ -21,6 +21,7 @@
 - Go puro por tecla (tecla + `Frame()` + JSON): ~0,4 ms; quadro de ~7 KB (`BenchmarkKeys*` em `bench_test.go`).
 - Tecla → tela: **p50 16,6 ms** (= o próximo quadro do monitor, o mínimo possível); p95 16,8 ms rolando e 20 ms digitando.
 - Chamada JS→Go→JS: p50 4 ms rolando, 7 ms digitando. A diferença vem provavelmente do LSP, que manda o texto inteiro a cada mudança (sync incremental pendente desde o MS5). O resto é a ponte do Wails (~3,5 ms).
+- **MS9, primeiro passo:** `Buffer.PlainText()` (chamado a cada tecla pelo sync do LSP) passou de 2,7 ms / 5.002 alocações para **0,9 ms / 2 alocações** num arquivo de 5k linhas (`BenchmarkPlainText5k`). Ele escreve as runes direto num `[]byte` do tamanho exato, em vez de criar uma `string(linha)` por linha; o `Grow` antigo também contava runes em vez de bytes. `TestPlainTextIgualAoJeitoSimples` garante o mesmo resultado, inclusive com runes inválidas e negativas. O sync incremental continua pendente.
 - Desenho no canvas: ~1 ms.
 - **Veredito: o critério do MS7 passou. O canvas fica; o Gio (plano B) não é necessário.**
 
