@@ -16,6 +16,7 @@ export type Span = {
 };
 
 export type Frame = {
+  seq: number;
   lines: Span[][];
   status: Span[];
   cursor: { row: number; col: number; bar?: boolean; hide?: boolean };

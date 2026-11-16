@@ -18,7 +18,10 @@ func Run(ed *editor.Editor) error {
 	}
 
 	var app *application.App
-	service := NewEditorService(ed, func() { app.Quit() })
+	service := NewEditorService(ed,
+		func() { app.Quit() },
+		func(f Frame) { app.Event.Emit(FrameEvent, f) },
+	)
 
 	app = application.New(application.Options{
 		Name: "gotextforge",

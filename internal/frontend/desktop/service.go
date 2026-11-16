@@ -1,12 +1,15 @@
 package desktop
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/gabrielcunha1232/gotextforge/internal/core/editor"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/input"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/render"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type Span struct {
@@ -28,26 +31,45 @@ type Cursor struct {
 }
 
 type Frame struct {
+	Seq    uint64   `json:"seq"`
 	Lines  [][]Span `json:"lines"`
 	Status []Span   `json:"status"`
 	Cursor Cursor   `json:"cursor"`
 }
 
+const FrameEvent = "frame"
+
 type EditorService struct {
-	mu   sync.Mutex
-	ed   *editor.Editor
-	quit func()
+	mu     sync.Mutex
+	ed     *editor.Editor
+	seq    uint64
+	quit   func()
+	emit   func(Frame)
+	cancel context.CancelFunc
 }
 
-func NewEditorService(ed *editor.Editor, quit func()) *EditorService {
-	return &EditorService{ed: ed, quit: quit}
+func NewEditorService(ed *editor.Editor, quit func(), emit func(Frame)) *EditorService {
+	return &EditorService{ed: ed, quit: quit, emit: emit}
+}
+
+func (s *EditorService) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
+	ctx, s.cancel = context.WithCancel(ctx)
+	go runAsync(ctx, s.ed.Async(), s.handleAsync, s.emit)
+	return nil
+}
+
+func (s *EditorService) ServiceShutdown() error {
+	if s.cancel != nil {
+		s.cancel()
+	}
+	return nil
 }
 
 func (s *EditorService) Resize(cols, rows int) Frame {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.ed.HandleEvent(input.NewResizeEvent(cols, rows))
-	return toFrame(s.ed.Frame())
+	return s.frame()
 }
 
 func (s *EditorService) Keys(keys []KeyInput) Frame {
@@ -59,14 +81,56 @@ func (s *EditorService) Keys(keys []KeyInput) Frame {
 			continue
 		}
 		s.ed.HandleEvent(input.NewKeyEvent(key))
-		if s.ed.ShouldQuit() {
-			if s.quit != nil {
-				go s.quit()
-			}
+		if s.checkQuit() {
 			break
 		}
 	}
-	return toFrame(s.ed.Frame())
+	return s.frame()
+}
+
+func (s *EditorService) handleAsync(ev any) Frame {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.ed.HandleAsync(ev)
+	s.checkQuit()
+	return s.frame()
+}
+
+func (s *EditorService) checkQuit() bool {
+	if !s.ed.ShouldQuit() {
+		return false
+	}
+	if s.quit != nil {
+		go s.quit()
+	}
+	return true
+}
+
+func (s *EditorService) frame() Frame {
+	s.seq++
+	f := toFrame(s.ed.Frame())
+	f.Seq = s.seq
+	return f
+}
+
+func runAsync(ctx context.Context, events <-chan any, handle func(any) Frame, emit func(Frame)) {
+	if events == nil {
+		return
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case ev, ok := <-events:
+			if !ok {
+				return
+			}
+			f := handle(ev)
+			if emit != nil {
+				emit(f)
+			}
+		}
+	}
 }
 
 func toFrame(f render.Frame) Frame {
@@ -141,5 +205,16 @@ func ansiRGB(i uint8) (uint8, uint8, uint8) {
 	default:
 		v := 8 + (i-232)*10
 		return v, v, v
+	}
+}
+
+func (s *EditorService) BenchMode() bool {
+	return os.Getenv("GTF_BENCH") != ""
+}
+
+func (s *EditorService) Report(text string) {
+	fmt.Fprintln(os.Stderr, text)
+	if s.quit != nil {
+		go s.quit()
 	}
 }

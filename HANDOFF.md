@@ -2,9 +2,42 @@
 
 > Documento de contexto para qualquer sessão futura (nova conversa de IA ou retomada depois de pausa). **Leia este arquivo antes de tudo**, depois o `ROADMAP.md`.
 
-## Estado atual (atualizado em 2026-11-13)
+## Estado atual (atualizado em 2026-11-16)
 
-> **Para a próxima sessão:** o painel Docker (item 1) está **concluído** — veja a seção "✓ Painel Docker" mais abaixo. O próximo trabalho é a **fase 2 (desktop, MS7: spike do canvas no Wails v3)**, salvo se decidir pelos itens 2/3 do Docker antes.
+> **Para a próxima sessão:** o **MS7 (spike do canvas no Wails v3) está concluído e aprovado** — veja "✓ Fase 2 — MS7" logo abaixo. O próximo trabalho é o **MS8: a moldura do desktop em HTML no estilo do protótipo do humano**, com as decisões já tomadas listadas lá.
+
+## ✓ Fase 2 — MS7 (CONCLUÍDO em 2026-11-16)
+
+**O que existe:** `cmd/gotextforge-desktop` (mesmo `main` do terminal, chamando `desktop.Run`) e `internal/frontend/desktop/`:
+- `desktop.go`: app Wails v3, janela 1200x800, fundo `#0b0e13`, `//go:embed all:frontend/dist`.
+- `service.go`: `EditorService` (serviço Wails) com `Resize(cols, rows)`, `Keys([]KeyInput)`, `ServiceStartup` (liga `runAsync`, que lê `editor.Async()`, aplica `HandleAsync` e emite o evento `"frame"`), `ServiceShutdown`. Um `sync.Mutex` garante uma goroutine por vez no editor. Cada `Frame` leva um `seq` crescente; o JS só desenha quadros mais novos. `ShouldQuit` → `app.Quit()`; `BenchMode`/`Report` só para o benchmark.
+- O `Frame` do desktop é um DTO próprio (spans com chaves curtas `t fg bg sp b i u c`, cores já em `#rrggbb`, ANSI 256 convertida no Go). **O core não ganhou tags JSON nem mudou.**
+- `keys.go`: `translateKey(KeyInput)` — nome da tecla do navegador (`"ArrowUp"`, `"ç"`, `"r"`+ctrl) → `input.Key`, com as mesmas regras do `TranslateKey` do TUI. Testado em Go.
+- `frontend/` (TypeScript puro + Vite, sem framework): `render.ts` (classe `Renderer`: fundos e texto em duas passadas, posições alinhadas ao pixel físico, blocos `█▀▄▌▐▎…` como retângulos e bordas `─│├┤╭╮╰╯` como linhas, undercurl ondulado, cursor bloco/barra), `keyboard.ts` (`<textarea>` invisível com foco: texto pelo evento `input`/composição — ç, tecla morta, IME —, teclas de controle pelo `keydown` com `preventDefault`, AltGr tratado como texto), `main.ts` (fila: **uma chamada ao Go por vez**, teclas acumuladas vão juntas), `bench.ts` (só com `GTF_BENCH=1`).
+
+**Como rodar:** `cd internal/frontend/desktop/frontend && npm install && npm run build`, depois `go run ./cmd/gotextforge-desktop [arquivos|pasta]`. Benchmark: `GTF_BENCH=1 go run ./cmd/gotextforge-desktop arquivo-de-5k-linhas.go` imprime as medições e fecha.
+
+**Medições (arquivo de 5.008 linhas, grade 134x42, monitor 60 Hz):**
+- Go puro por tecla (tecla + `Frame()` + JSON): ~0,4 ms; quadro de ~7 KB (`BenchmarkKeys*` em `bench_test.go`).
+- Tecla → tela: **p50 16,6 ms** (= o próximo quadro do monitor, o mínimo possível); p95 16,8 ms rolando e 20 ms digitando.
+- Chamada JS→Go→JS: p50 4 ms rolando, 7 ms digitando. A diferença vem provavelmente do LSP, que manda o texto inteiro a cada mudança (sync incremental pendente desde o MS5). O resto é a ponte do Wails (~3,5 ms).
+- Desenho no canvas: ~1 ms.
+- **Veredito: o critério do MS7 passou. O canvas fica; o Gio (plano B) não é necessário.**
+
+**Decisões do humano para o MS8 (2026-11-16):**
+- A interface segue o **protótipo HTML que o humano mandou** (estilo IDE: barra superior com marca e busca `Ctrl+K`, barra de atividades à esquerda, explorador em árvore, abas + breadcrumb, editor no centro, painel de baixo com abas Terminal/Problemas/…, status bar). Marca: gotextforge.
+- **Cores: manter o tema Marca Go** (o do core), não a paleta violeta do protótipo. Só o layout vem do protótipo.
+- **Painel direito "Go Insights" fica para depois** (milestone próprio, só com dados reais).
+- **Consequência de arquitetura a planejar antes do código:** abas, explorador, terminal, Docker e status line hoje são desenhados pelo core dentro do `Frame`. No MS8 eles viram HTML alimentado por dados estruturados do core (lista de abas, árvore, problemas, saída do terminal, informações da status line), e o canvas fica só com o texto. O TUI continua igual. Entram ações por clique (abrir arquivo, trocar/fechar aba), que o contrato `Event` não tem: provavelmente métodos do serviço, não eventos de mouse.
+
+**Armadilhas do desktop (não redescobrir):**
+- **`go build ./...` precisa do `frontend/dist/`**: o `.gitkeep` está versionado e o Vite está com `emptyOutDir: false` e nomes fixos (sem hash) para não acumular lixo. Depois de mexer no TS, rode `npm run build` antes do `go build`.
+- **Matar o app à força deixa processos `msedgewebview2` órfãos**, e a próxima abertura falha com `800700aa: Recurso solicitado em uso`. Fechar pelo X ou pelo `:q` não deixa nada. Para destravar: encerrar os `msedgewebview2.exe` cujo `--user-data-dir` aponta para `AppData\Roaming\<exe>\EBWebView`.
+- **Ordem das chamadas:** o Wails roda cada chamada do JS numa goroutine; duas chamadas em voo podem chegar fora de ordem. Por isso a fila no `main.ts` e o `seq` nos quadros.
+- **AltGr no Windows chega como Ctrl+Alt.** No ABNT2, `/` e `?` saem do AltGr. O `keyboard.ts` trata Ctrl+Alt+símbolo como texto.
+- **Testar teclado com `SendKeys` não é confiável** (o Windows nega o foco a processos em segundo plano, e as teclas podem cair em outra janela). Use o modo `GTF_BENCH` ou teste à mão.
+- **Fechar pelo X ignora alterações não salvas** (o `:q` avisa, o X não). Tratar no MS8.
+- **`-race` não roda nesta máquina** (precisa de cgo).
 
 **Fase 1 (terminal) concluída: MS0 a MS6.** O editor abre um ou vários arquivos pela linha de comando (cada um vira uma aba), ou sem argumento mostra uma tela inicial com logo, no terminal (Bubble Tea v2). Recursos atuais:
 - **Vim (MS4, engine em `internal/core/engine`):**
@@ -48,11 +81,12 @@ O critério do MS2 foi verificado de ponta a ponta: o editor modifica o `main.go
 
 Arquivos `.go` têm syntax highlight (MS3): palavras-chave, strings, números, comentários, identificadores predeclarados e nomes de função, com comentários de bloco e raw strings que atravessam linhas tratados corretamente.
 
-**Próximo:** a fase 2 (desktop, MS7: spike do canvas no Wails v3). O painel Docker (item 1) foi concluído em 2026-11-13.
+**Próximo:** o MS8 (moldura do desktop no estilo do protótipo). O MS7 foi concluído em 2026-11-16.
 
 ### Estrutura real (difere do ROADMAP, que ainda mostra `core/` na raiz)
 
 ```
+cmd/gotextforge-desktop/    mesmo main, chamando desktop.Run (fase 2)
 cmd/gotextforge/main.go     editor.New(nil,"") + SetLanguageServer(starter do gopls) + OpenFile(cada argumento) → tui.Run → ed.Close()
 internal/core/input/        Event{Kind, Key, Width, Height}, Key{Code, Rune, Mod} (comparável, vira chave de map)
 internal/core/render/       Frame{Lines, Cursor ScreenPos, CursorShape, Status StyledLine}, StyledLine = []Span (Text(), Width()), Style, Color{Kind ANSI|RGB}
@@ -72,6 +106,7 @@ internal/core/editor/       editor.go (estado/eventos), normal.go (executa coman
                             tabs.go (document por aba, OpenFile, layout, tabline), search.go (/ ? n N * #, destaque),
                             lsp.go (LanguageClient, HandleAsync), diagnostics.go, popup.go (hover/janelas), completion.go,
                             terminal.go (painel de comando + bottomRows), docker.go (ModeDocker, painel, refresh, ações)
+internal/frontend/desktop/  Wails v3: EditorService (Resize/Keys/async → evento "frame"), keys.go, frontend/ (TS + Vite, canvas)
 internal/frontend/tui/      TranslateKey (tea → input.Key), RenderFrame (Frame → string com SGR ANSI direto), model
 ```
 
@@ -141,7 +176,8 @@ O core (`internal/core/...`) não importa nada de UI. Isso é verificado em toda
    - O que ficou fora do MS5: `gd` (ir para a definição), renomear, formatar ao salvar, sync incremental (hoje o texto inteiro vai a cada mudança, o que é ok até alguns milhares de linhas) e snippets.
    - ~~Milestone 6~~ ✅: busca, abas, status line e um README pronto para mostrar.
    - **Pendências da fase 1 (boas para o humano):** `:w outro.go`; `.` para repetir; modo visual; `gd` (ir para a definição); tema claro ou configurável; wcwidth para CJK/emoji (hoje 1 rune = 1 célula); `;`/`,` depois de `f`/`t`. O autoindent foi feito em 2026-11-13 (`smartedit.go`).
-   - ~~Painel Docker (item 1)~~ ✅ concluído em 2026-11-13 (veja "✓ Painel Docker" abaixo). **A próxima sessão é a fase 2 (MS7, o spike do canvas no Wails)**, salvo se optar pelos itens 2/3 do Docker antes.
+   - ~~Painel Docker (item 1)~~ ✅ concluído em 2026-11-13 (veja "✓ Painel Docker" abaixo).
+   - ~~MS7 (spike do canvas no Wails)~~ ✅ concluído em 2026-11-16 (veja "✓ Fase 2 — MS7"). **A próxima sessão é o MS8**: planejar primeiro o contrato dos dados da moldura (abas, árvore, problemas, terminal, status) e as ações por clique; depois construir a moldura HTML no estilo do protótipo, com o tema Marca Go.
 
 ## ✓ Painel Docker (item 1 — CONCLUÍDO em 2026-11-13)
 

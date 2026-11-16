@@ -1,8 +1,12 @@
 package desktop
 
 import (
+	"context"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/gabrielcunha1232/gotextforge/internal/core/editor"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/render"
 )
 
@@ -55,5 +59,48 @@ func TestToFrame(t *testing.T) {
 	}
 	if f.Cursor != (Cursor{Row: 0, Col: 2, Bar: true}) {
 		t.Errorf("cursor = %+v", f.Cursor)
+	}
+}
+
+func TestRunAsync(t *testing.T) {
+	events := make(chan any, 3)
+	events <- "a"
+	events <- "b"
+	events <- "c"
+
+	ctx, cancel := context.WithCancel(context.Background())
+	var got []string
+	done := make(chan struct{})
+	go func() {
+		runAsync(ctx, events,
+			func(ev any) Frame { return Frame{Status: []Span{{Text: ev.(string)}}} },
+			func(f Frame) {
+				got = append(got, f.Status[0].Text)
+				if len(got) == 3 {
+					cancel()
+				}
+			})
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("runAsync não parou depois do cancel")
+	}
+	if strings.Join(got, "") != "abc" {
+		t.Errorf("emitidos = %v, quero a b c em ordem", got)
+	}
+}
+
+func TestSeqCresce(t *testing.T) {
+	s := NewEditorService(editor.New(nil, ""), nil, nil)
+	a := s.Resize(80, 24)
+	b := s.Keys([]KeyInput{{Key: "i"}, {Key: "x"}, {Key: "Escape"}})
+	if b.Seq <= a.Seq {
+		t.Errorf("seq não cresceu: %d depois de %d", b.Seq, a.Seq)
+	}
+	if len(b.Lines) != 23 {
+		t.Errorf("linhas = %d, quero 23 (24 menos a status)", len(b.Lines))
 	}
 }

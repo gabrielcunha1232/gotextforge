@@ -1,4 +1,4 @@
-import { Call } from "@wailsio/runtime";
+import { Call, Events } from "@wailsio/runtime";
 import { Frame, Renderer, measureCell } from "./render";
 import { KeyInput, attachKeyboard, placeTextarea } from "./keyboard";
 
@@ -12,6 +12,7 @@ const renderer = new Renderer(canvas, ctx, measureCell(ctx));
 let pendingKeys: KeyInput[] = [];
 let pendingResize = false;
 let busy = false;
+let lastSeq = 0;
 
 function grid() {
   return {
@@ -21,6 +22,10 @@ function grid() {
 }
 
 function show(frame: Frame) {
+  if (frame.seq <= lastSeq) {
+    return;
+  }
+  lastSeq = frame.seq;
   renderer.draw(frame);
   const c = frame.cursor;
   placeTextarea(ta, c.col * renderer.cell.w, c.row * renderer.cell.h);
@@ -60,8 +65,17 @@ attachKeyboard(ta, (k) => {
   pump();
 });
 
+Events.On("frame", (ev) => show(ev.data as Frame));
+
 window.addEventListener("resize", resize);
-document.fonts.ready.then(() => {
+document.fonts.ready.then(async () => {
   renderer.cell = measureCell(ctx);
   resize();
+  if (await Call.ByName(`${SERVICE}.BenchMode`)) {
+    const { runBench } = await import("./bench");
+    await new Promise((r) => setTimeout(r, 4000));
+    const { cols, rows } = grid();
+    const report = await runBench((keys) => Call.ByName(`${SERVICE}.Keys`, keys), show, cols, rows);
+    await Call.ByName(`${SERVICE}.Report`, report);
+  }
 });
