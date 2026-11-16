@@ -62,8 +62,7 @@ func (e *Editor) Frame() render.Frame {
 
 func (e *Editor) textFrame() render.Frame {
 	frame := e.editorFrame()
-	e.overlayFinder(&frame, e.width)
-	if e.mode == ModeExplorer || e.mode == ModeTerminal || e.mode == ModeDocker {
+	if e.mode == ModeExplorer || e.mode == ModeTerminal || e.mode == ModeDocker || e.mode == ModeFinder {
 		frame.HideCursor = true
 	}
 	frame.Status = e.commandLine()

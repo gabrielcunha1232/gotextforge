@@ -90,6 +90,10 @@ async function pump() {
 }
 
 export function sendKey(k: KeyInput) {
+  if (k.ctrl && !k.alt && k.key.toLowerCase() === "k" && uiStore.get()?.Focus !== "finder") {
+    invoke("TogglePanel", "finder");
+    return;
+  }
   const last = ops[ops.length - 1];
   if (last && last.method === "Keys") {
     (last.args[0] as KeyInput[]).push(k);

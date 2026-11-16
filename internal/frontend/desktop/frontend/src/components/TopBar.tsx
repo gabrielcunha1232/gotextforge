@@ -1,3 +1,4 @@
+import { invoke } from "../bridge";
 import type { UIState } from "../types";
 
 export function TopBar({ ui }: { ui: UIState | null }) {
@@ -9,9 +10,11 @@ export function TopBar({ ui }: { ui: UIState | null }) {
         gotextforge
         {project && <span className="project">{project}</span>}
       </div>
-      <div className="search">
+      <div className="search" onClick={() => invoke("TogglePanel", "finder")}>
         <span>⌕　Buscar arquivo…</span>
-        <kbd>Espaço Espaço</kbd>
+        <span>
+          <kbd>Ctrl K</kbd> <kbd>Espaço Espaço</kbd>
+        </span>
       </div>
       <div className="top-spacer" />
     </header>

@@ -156,6 +156,10 @@ func (s *EditorService) DockerKey(key string) Frame {
 	return s.act(func() { s.ed.DockerKey(key) })
 }
 
+func (s *EditorService) FinderClick(i int) Frame {
+	return s.act(func() { s.ed.FinderClick(i) })
+}
+
 func (s *EditorService) act(fn func()) Frame {
 	s.mu.Lock()
 	defer s.mu.Unlock()

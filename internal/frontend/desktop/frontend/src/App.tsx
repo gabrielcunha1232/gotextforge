@@ -7,6 +7,7 @@ import { Tabs } from "./components/Tabs";
 import { EditorView } from "./components/EditorView";
 import { BottomPanel, useBottomVisible } from "./components/BottomPanel";
 import { StatusBar } from "./components/StatusBar";
+import { Finder } from "./components/Finder";
 
 export function App() {
   const ui = useSyncExternalStore(uiStore.subscribe, uiStore.get);
@@ -25,6 +26,7 @@ export function App() {
         </main>
       </div>
       <StatusBar ui={ui} />
+      {ui?.Finder && <Finder finder={ui.Finder} />}
     </div>
   );
 }

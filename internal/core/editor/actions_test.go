@@ -234,3 +234,45 @@ func TestDockerCliques(t *testing.T) {
 		t.Errorf("q deveria fechar o painel")
 	}
 }
+
+func TestFinderNaMolduraExterna(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "alfa.go"), []byte("package x\n"), 0o644)
+	os.WriteFile(filepath.Join(dir, "beta.go"), []byte("package x\n"), 0o644)
+	ed := New(nil, "")
+	ed.HandleEvent(input.NewResizeEvent(100, 30))
+	ed.SetRoot(dir)
+	ed.SetExternalChrome(true)
+
+	before := ed.Frame()
+	ed.TogglePanel("finder")
+	f := ed.Frame()
+	if !f.HideCursor {
+		t.Errorf("com a busca aberta (desenhada pelo HTML), o cursor do canvas deveria sumir")
+	}
+	for i := range f.Lines {
+		if f.Lines[i].Text() != before.Lines[i].Text() {
+			t.Fatalf("na moldura externa a busca não deveria ser desenhada no canvas (linha %d: %q)", i, f.Lines[i].Text())
+		}
+	}
+
+	typeKeys(t, ed, "bet")
+	ed.FinderClick(5)
+	if ed.mode != ModeFinder {
+		t.Fatalf("índice inválido não deveria fechar a busca")
+	}
+	ed.FinderClick(0)
+	if ed.mode != ModeNormal || filepath.Base(ed.path) != "beta.go" {
+		t.Errorf("clicar no resultado deveria abrir beta.go: modo %v, aba %q", ed.mode, ed.path)
+	}
+
+	ed.TogglePanel("finder")
+	typeKeys(t, ed, "novo.go")
+	if ui := ed.UI().Finder; ui == nil || !ui.Create {
+		t.Fatalf("sem resultado, deveria oferecer criar: %+v", ui)
+	}
+	ed.FinderClick(0)
+	if _, err := os.Stat(filepath.Join(dir, "novo.go")); err != nil || filepath.Base(ed.path) != "novo.go" {
+		t.Errorf("clicar em + criar deveria criar e abrir novo.go: %v, aba %q", err, ed.path)
+	}
+}

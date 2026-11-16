@@ -173,3 +173,12 @@ func (e *Editor) DockerKey(key string) {
 	e.mode = ModeDocker
 	e.handleDockerKey(input.Key{Code: input.KeyRune, Rune: rune(key[0])})
 }
+
+func (e *Editor) FinderClick(i int) {
+	f := e.finder
+	if e.mode != ModeFinder || f == nil || i < 0 || i >= f.rowCount() {
+		return
+	}
+	f.sel = i
+	e.handleFinderKey(input.Key{Code: input.KeyEnter})
+}

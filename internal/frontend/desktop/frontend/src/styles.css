@@ -775,3 +775,158 @@ kbd {
 .status .lsp.failed {
   color: var(--c-red);
 }
+
+.search {
+  cursor: pointer;
+}
+
+.search:hover {
+  border-color: var(--c-gutter);
+  color: var(--c-fg-dark);
+}
+
+.finder-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: color-mix(in srgb, var(--c-bg) 45%, transparent);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 70px;
+}
+
+.finder {
+  width: min(640px, 80vw);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-bg-float);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px #000a;
+  overflow: hidden;
+}
+
+.finput {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  font: 14px var(--mono);
+  border-bottom: 1px solid var(--line);
+}
+
+.fprompt {
+  color: var(--c-orange);
+  font-weight: 700;
+}
+
+.fquery {
+  color: var(--c-fg);
+  white-space: pre;
+}
+
+.fcaret {
+  width: 2px;
+  height: 17px;
+  margin-left: -6px;
+  background: var(--c-fg);
+  animation: blink 1s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.fplaceholder {
+  color: var(--c-dark3);
+  font: 12px var(--ui-font);
+}
+
+.fcount {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--c-comment);
+}
+
+.ftitle {
+  padding: 8px 16px 4px;
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--c-comment);
+}
+
+.flist {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 6px 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-gutter) transparent;
+}
+
+.fitem {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.fitem:hover {
+  background: var(--c-bg-highlight);
+}
+
+.fitem.selected {
+  background: var(--c-bg-sel);
+  box-shadow: inset 2px 0 var(--accent);
+}
+
+.fitem mark {
+  background: none;
+  color: var(--c-orange);
+  font-weight: 700;
+}
+
+.fname {
+  color: var(--c-fg);
+}
+
+.fdir {
+  font-size: 11.5px;
+  color: var(--c-comment);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fitem.create {
+  color: var(--c-green);
+}
+
+.fempty {
+  padding: 10px;
+  color: var(--c-comment);
+}
+
+.ffoot {
+  padding: 7px 16px;
+  border-top: 1px solid var(--line);
+  font-size: 10.5px;
+  color: var(--c-comment);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.ffoot kbd + kbd,
+.ffoot kbd {
+  margin-left: 6px;
+}
