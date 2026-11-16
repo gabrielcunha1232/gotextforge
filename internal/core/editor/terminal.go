@@ -62,6 +62,9 @@ func (e *Editor) bottomPanelHeight() int {
 // bottomRows is the height of the single bottom panel slot, shared by the
 // terminal and the docker panel (they are mutually exclusive).
 func (e *Editor) bottomRows() int {
+	if e.external {
+		return 0
+	}
 	if e.dock.open || e.term.open {
 		return e.bottomPanelHeight()
 	}

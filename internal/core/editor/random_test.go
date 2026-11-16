@@ -40,6 +40,8 @@ func TestSequenciasAleatoriasNaoQuebramOEditor(t *testing.T) {
 		}
 		width, height := 5+rng.IntN(120), 2+rng.IntN(40)
 		ed.HandleEvent(input.NewResizeEvent(width, height))
+		external := round%2 == 1
+		ed.SetExternalChrome(external)
 
 		var history []string
 		for step := 0; step < 200; step++ {
@@ -71,6 +73,9 @@ func TestSequenciasAleatoriasNaoQuebramOEditor(t *testing.T) {
 					if l.Width() > width {
 						t.Fatalf("linha %d com largura %d > %d\nteclas %v", i, l.Width(), width, history)
 					}
+				}
+				if external && len(f.Lines) != max(height-1, 1) {
+					t.Fatalf("moldura externa com %d linhas, quero %d\nteclas %v", len(f.Lines), max(height-1, 1), history)
 				}
 				if f.Status.Width() > width {
 					t.Fatalf("status com largura %d > %d\nteclas %v", f.Status.Width(), width, history)

@@ -4,7 +4,7 @@
 
 ## Estado atual (atualizado em 2026-11-16)
 
-> **Para a próxima sessão:** o **MS7 (spike do canvas no Wails v3) está concluído e aprovado** — veja "✓ Fase 2 — MS7" logo abaixo. O próximo trabalho é o **MS8: a moldura do desktop em HTML no estilo do protótipo do humano**, com as decisões já tomadas listadas lá.
+> **Para a próxima sessão:** o **MS7 (spike do canvas no Wails v3) está concluído e aprovado** — veja "✓ Fase 2 — MS7" logo abaixo. O **MS8** (moldura do desktop no estilo do protótipo) está em andamento: contrato aprovado e passo 1 feito — veja "Contrato do MS8" lá. **Próximo: passo 2, o `ed.UI()`.**
 
 ## ✓ Fase 2 — MS7 (CONCLUÍDO em 2026-11-16)
 
@@ -28,7 +28,13 @@
 - A interface segue o **protótipo HTML que o humano mandou** (estilo IDE: barra superior com marca e busca `Ctrl+K`, barra de atividades à esquerda, explorador em árvore, abas + breadcrumb, editor no centro, painel de baixo com abas Terminal/Problemas/…, status bar). Marca: gotextforge.
 - **Cores: manter o tema Marca Go** (o do core), não a paleta violeta do protótipo. Só o layout vem do protótipo.
 - **Painel direito "Go Insights" fica para depois** (milestone próprio, só com dados reais).
-- **Consequência de arquitetura a planejar antes do código:** abas, explorador, terminal, Docker e status line hoje são desenhados pelo core dentro do `Frame`. No MS8 eles viram HTML alimentado por dados estruturados do core (lista de abas, árvore, problemas, saída do terminal, informações da status line), e o canvas fica só com o texto. O TUI continua igual. Entram ações por clique (abrir arquivo, trocar/fechar aba), que o contrato `Event` não tem: provavelmente métodos do serviço, não eventos de mouse.
+- **Contrato do MS8 (aprovado em 2026-11-16):**
+  1. **Moldura externa no core:** `ed.SetExternalChrome(true)` (só o desktop chama). O `Frame()` traz só a área de texto (gutter, código, cursor, janelas do `K`/completion e, por enquanto, a busca de arquivos); abas, explorador, painel de baixo e status line não são desenhados, e o `layout()` dá essa altura ao texto. **A última linha (`Frame.Status`) vira a linha de comando do vim** (`:`, `/`, prompts de criar/renomear/confirmar) e as mensagens, como no Neovim. O TUI não muda.
+  2. **`ed.UI()`:** um retrato só com dados (modo, foco, abas, linhas visíveis do explorador e a selecionada, painel de baixo, terminal, Docker, problemas de todas as abas, busca de arquivos, informações da status line). O desktop só envia o `UI()` quando ele muda; o canvas continua recebendo o `Frame` direto.
+  3. **Ações por clique como métodos do core:** `OpenFile`, `SwitchTab`, `CloseTab`, `ToggleNode`, `Focus`, `GoTo`, `RunCommand`, `ClickText`, expostos pelo `EditorService`. **O teclado continua indo inteiro para o core**; o HTML é só a vista do estado do core (mouse e teclado nunca discordam).
+  4. **Moldura em React** (decisão do humano; já usa no newpostman), com o canvas em TS puro no centro. Cores do `theme.go` entregues ao CSS por um `Theme()`.
+  5. **Passos:** (1) moldura externa no core ✅ · (2) `UI()` · (3) esqueleto HTML/React com o canvas no centro · (4) abas e status bar · (5) explorador · (6) painel de baixo: Terminal/Problemas/Docker · (7) busca de arquivos como paleta (Ctrl+K e `Espaço Espaço`) · (8) aviso ao fechar pelo X com arquivos não salvos e clique no texto.
+- **MS8 passo 1 (feito em 2026-11-16):** `external` no `Editor`, `SetExternalChrome`, `textFrame()`/`commandLine()` em `ui.go`, `overlayFinder` extraído do `Frame()`. `tablineRows`/`tabline`/`bottomRows` respeitam o modo. Testes em `chrome_test.go`; o teste aleatório roda metade das rodadas com a moldura externa e confere que há sempre `altura-1` linhas. O desktop **ainda não liga** o modo (liga no passo 3, junto com a moldura HTML).
 
 **Armadilhas do desktop (não redescobrir):**
 - **`go build ./...` precisa do `frontend/dist/`**: o `.gitkeep` está versionado e o Vite está com `emptyOutDir: false` e nomes fixos (sem hash) para não acumular lixo. Depois de mexer no TS, rode `npm run build` antes do `go build`.

@@ -23,7 +23,7 @@ func loadFile(path string) (*buffer.Buffer, error) {
 }
 
 func (e *Editor) tablineRows() int {
-	if len(e.docs) > 1 {
+	if len(e.docs) > 1 && !e.external {
 		return 1
 	}
 	return 0
@@ -176,7 +176,7 @@ func (e *Editor) writeAll() bool {
 }
 
 func (e *Editor) tabline() render.StyledLine {
-	if len(e.docs) < 2 {
+	if len(e.docs) < 2 || e.external {
 		return nil
 	}
 	active := render.Style{Fg: colFg, Bg: colBgHighlight, Bold: true}

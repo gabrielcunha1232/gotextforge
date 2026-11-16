@@ -91,6 +91,7 @@ type Editor struct {
 	prompt     *prompt
 	width      int
 	height     int
+	external   bool
 }
 
 func New(buf *buffer.Buffer, path string) *Editor {
@@ -108,6 +109,11 @@ func New(buf *buffer.Buffer, path string) *Editor {
 	}
 	e.layout()
 	return e
+}
+
+func (e *Editor) SetExternalChrome(on bool) {
+	e.external = on
+	e.layout()
 }
 
 func (e *Editor) ShouldQuit() bool {

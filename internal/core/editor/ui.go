@@ -11,6 +11,9 @@ import (
 )
 
 func (e *Editor) Frame() render.Frame {
+	if e.external {
+		return e.textFrame()
+	}
 	fullWidth := e.width
 	panel := 0
 	if e.explorer.open && e.explorer.tree != nil {
@@ -49,21 +52,50 @@ func (e *Editor) Frame() render.Frame {
 		}
 	}
 
-	if e.mode == ModeFinder && e.finder != nil {
-		box, row, col := e.finderBox(len(frame.Lines))
-		for i, b := range box {
-			if row+i < len(frame.Lines) {
-				frame.Lines[row+i] = overlay(frame.Lines[row+i], col, b, fullWidth)
-			}
-		}
-		frame.Cursor = render.ScreenPos{Row: row + 1, Col: min(col+4+len([]rune(sanitize(string(e.finder.query)))), fullWidth-1)}
-		frame.CursorShape = render.CursorBar
-	}
+	e.overlayFinder(&frame, fullWidth)
 	if e.mode == ModeExplorer || e.mode == ModeTerminal || e.mode == ModeDocker {
 		frame.HideCursor = true
 	}
 	frame.Status = e.statusLine()
 	return frame
+}
+
+func (e *Editor) textFrame() render.Frame {
+	frame := e.editorFrame()
+	e.overlayFinder(&frame, e.width)
+	if e.mode == ModeExplorer || e.mode == ModeTerminal || e.mode == ModeDocker {
+		frame.HideCursor = true
+	}
+	frame.Status = e.commandLine()
+	return frame
+}
+
+func (e *Editor) overlayFinder(frame *render.Frame, width int) {
+	if e.mode != ModeFinder || e.finder == nil {
+		return
+	}
+	box, row, col := e.finderBox(len(frame.Lines))
+	for i, b := range box {
+		if row+i < len(frame.Lines) {
+			frame.Lines[row+i] = overlay(frame.Lines[row+i], col, b, width)
+		}
+	}
+	frame.Cursor = render.ScreenPos{Row: row + 1, Col: min(col+4+len([]rune(sanitize(string(e.finder.query)))), width-1)}
+	frame.CursorShape = render.CursorBar
+}
+
+func (e *Editor) commandLine() render.StyledLine {
+	switch {
+	case e.mode == ModeCommand || e.mode == ModeSearch || e.mode == ModePrompt:
+		return e.statusLine()
+	case e.message != "":
+		style := render.Style{Fg: colFgDark}
+		if isErrorMessage(e.message) {
+			style = render.Style{Fg: colRed, Bold: true}
+		}
+		return truncateLine(render.StyledLine{{Text: sanitize(e.message), Style: style}}, e.width)
+	}
+	return render.StyledLine{}
 }
 
 func (e *Editor) editorFrame() render.Frame {
