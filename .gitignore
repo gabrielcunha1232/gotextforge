@@ -1,2 +1,5 @@
 .env
 *.exe
+internal/frontend/desktop/frontend/node_modules/
+internal/frontend/desktop/frontend/dist/*
+!internal/frontend/desktop/frontend/dist/.gitkeep

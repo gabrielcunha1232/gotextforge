@@ -1,0 +1,13 @@
+{
+  "name": "gotextforge-desktop",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc && vite build"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "vite": "^8.2.4"
+  }
+}
