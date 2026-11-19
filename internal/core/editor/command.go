@@ -94,6 +94,13 @@ func (e *Editor) execute(cmd string) {
 		e.cycleTab(1)
 	case "bp", "bprev", "bprevious", "tabp", "tabprev", "tabprevious":
 		e.cycleTab(-1)
+	case "colo", "colorscheme":
+		switch {
+		case arg == "":
+			e.message = e.theme.Name
+		case !e.SetTheme(arg):
+			e.message = fmt.Sprintf("E185: tema desconhecido: %s (use %s)", arg, strings.Join(ThemeNames(), " ou "))
+		}
 	default:
 		e.message = "E492: comando desconhecido: " + cmd
 	}

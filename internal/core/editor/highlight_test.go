@@ -39,8 +39,8 @@ func TestHighlightNoFrame(t *testing.T) {
 		{3, "// fim", syntax.KindComment},
 	}
 	for _, c := range checks {
-		if got := withBg(styleOf(t, f.Lines[c.line], c.word), render.Color{}); got != theme[c.kind] {
-			t.Errorf("linha %d %q: estilo %+v, esperava %+v", c.line, c.word, got, theme[c.kind])
+		if got := withBg(styleOf(t, f.Lines[c.line], c.word), render.Color{}); got != ThemeGo.Syntax[c.kind] {
+			t.Errorf("linha %d %q: estilo %+v, esperava %+v", c.line, c.word, got, ThemeGo.Syntax[c.kind])
 		}
 	}
 }
@@ -61,7 +61,7 @@ func TestHighlightSoEmArquivoGo(t *testing.T) {
 
 func TestHighlightAcompanhaEdicao(t *testing.T) {
 	ed := editorFrom(t, "x := 1\ny := 2\nz := 3\n")
-	comment := theme[syntax.KindComment]
+	comment := ThemeGo.Syntax[syntax.KindComment]
 
 	if got := styleOf(t, ed.Frame().Lines[2], "z"); got == comment {
 		t.Fatal("antes da edicao a linha 3 nao e comentario")
@@ -96,10 +96,10 @@ func TestHighlightComTelaRolada(t *testing.T) {
 	for last > 0 && strings.HasPrefix(frameLineText(f.Lines[last]), "~") {
 		last--
 	}
-	if got := withBg(styleOf(t, f.Lines[last-2], "conteudo"), render.Color{}); got != theme[syntax.KindString] {
+	if got := withBg(styleOf(t, f.Lines[last-2], "conteudo"), render.Color{}); got != ThemeGo.Syntax[syntax.KindString] {
 		t.Errorf("linha no meio da raw string, vista depois de G, deveria ser string; veio %+v", got)
 	}
-	if got := withBg(styleOf(t, f.Lines[last], "func"), render.Color{}); got != theme[syntax.KindKeyword] {
+	if got := withBg(styleOf(t, f.Lines[last], "func"), render.Color{}); got != ThemeGo.Syntax[syntax.KindKeyword] {
 		t.Errorf("depois da raw string fechar, func deveria ser keyword; veio %+v", got)
 	}
 }

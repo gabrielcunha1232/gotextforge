@@ -12,10 +12,10 @@ import (
 
 func frameLineText(line render.StyledLine) string {
 	spans := line
-	if len(spans) > 0 && (spans[0].Style == styleLineNr || spans[0].Style == styleCursorLineNr) {
+	if len(spans) > 0 && (spans[0].Style == ThemeGo.lineNr() || spans[0].Style == ThemeGo.cursorLineNr()) {
 		spans = spans[1:]
 	}
-	if n := len(spans); n > 0 && spans[n-1].Style == (render.Style{Bg: colBgHighlight}) && strings.TrimSpace(spans[n-1].Text) == "" {
+	if n := len(spans); n > 0 && spans[n-1].Style == (render.Style{Bg: ThemeGo.BgHighlight}) && strings.TrimSpace(spans[n-1].Text) == "" {
 		spans = spans[:n-1]
 	}
 	var b strings.Builder

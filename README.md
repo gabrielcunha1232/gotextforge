@@ -46,7 +46,7 @@ go run ./cmd/gotextforge ~/meu-projeto    # abre a pasta com o explorador
 go run ./cmd/gotextforge main.go util.go  # abre arquivos em abas
 ```
 
-O tema usa truecolor e foi feito para terminais escuros (como o terminal do VS Code e o Windows Terminal).
+Há dois temas, ambos em truecolor: **go** (o padrão, feito para terminais escuros como o do VS Code e o Windows Terminal) e **retro**, um flat design retrô em creme que pinta o próprio fundo do terminal. Troque com `:colorscheme retro` e `:colorscheme go`; no desktop, também pelo botão **Tema** na barra de cima.
 
 ## Navegando pelo projeto
 
@@ -125,6 +125,7 @@ O painel não é um terminal completo: ele **não recebe teclado**. Programas in
 | `:wq`, `:x` | salvar e fechar |
 | `:qa`, `:qa!` | sair de tudo |
 | `:bn`, `:bp` | próxima e anterior aba |
+| `:colorscheme go`, `:colorscheme retro` | trocar o tema (`:colorscheme` sozinho mostra o atual) |
 
 ## Arquitetura
 

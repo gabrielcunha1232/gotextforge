@@ -67,15 +67,15 @@ func logoRows() [5]string {
 	return rows
 }
 
-func gradient(t float64) render.Color {
-	stops := []render.Color{colBlue, colTeal, colGreen}
-	if t <= 0 {
+func (t *Theme) gradient(pos float64) render.Color {
+	stops := t.Logo[:]
+	if pos <= 0 {
 		return stops[0]
 	}
-	if t >= 1 {
+	if pos >= 1 {
 		return stops[len(stops)-1]
 	}
-	seg := t * float64(len(stops)-1)
+	seg := pos * float64(len(stops)-1)
 	i := int(seg)
 	f := seg - float64(i)
 	a, b := stops[i], stops[i+1]
@@ -95,7 +95,7 @@ func (e *Editor) overlayIntro(lines []render.StyledLine) {
 			for x, r := range []rune(row) {
 				style := render.Style{}
 				if r != ' ' {
-					style = render.Style{Fg: gradient(float64(x) / float64(logoWidth-1))}
+					style = render.Style{Fg: e.theme.gradient(float64(x) / float64(logoWidth-1))}
 				}
 				line = append(line, render.Span{Text: string(r), Style: style})
 			}
@@ -103,12 +103,12 @@ func (e *Editor) overlayIntro(lines []render.StyledLine) {
 		}
 		block = append(block, nil)
 	} else {
-		block = append(block, render.StyledLine{{Text: "gotextforge", Style: render.Style{Fg: colBlue, Bold: true}}}, nil)
+		block = append(block, render.StyledLine{{Text: "gotextforge", Style: render.Style{Fg: e.theme.Blue, Bold: true}}}, nil)
 	}
 
 	block = append(block,
-		render.StyledLine{{Text: "editor modal para Go", Style: styleIntroSub}},
-		render.StyledLine{{Text: truncateText(sanitize(e.projectRoot()), max(e.width-4, 1)), Style: render.Style{Fg: colDark3}}},
+		render.StyledLine{{Text: "editor modal para Go", Style: e.theme.introSub()}},
+		render.StyledLine{{Text: truncateText(sanitize(e.projectRoot()), max(e.width-4, 1)), Style: render.Style{Fg: e.theme.Dark3}}},
 		nil,
 	)
 	keyWidth, descWidth := 0, 0
@@ -118,8 +118,8 @@ func (e *Editor) overlayIntro(lines []render.StyledLine) {
 	}
 	for _, h := range introHints {
 		block = append(block, render.StyledLine{
-			{Text: padRight(h[0], keyWidth+3), Style: styleIntroKey},
-			{Text: padRight(h[1], descWidth), Style: styleIntroDesc},
+			{Text: padRight(h[0], keyWidth+3), Style: e.theme.introKey()},
+			{Text: padRight(h[1], descWidth), Style: e.theme.introDesc()},
 		})
 	}
 
@@ -135,7 +135,7 @@ func (e *Editor) overlayIntro(lines []render.StyledLine) {
 		if left < 0 {
 			continue
 		}
-		row := render.StyledLine{{Text: "~", Style: styleTilde}}
+		row := render.StyledLine{{Text: "~", Style: e.theme.tilde()}}
 		if pad := left - 1; pad > 0 {
 			row = append(row, render.Span{Text: strings.Repeat(" ", pad)})
 		}

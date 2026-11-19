@@ -8,16 +8,16 @@ import (
 	"github.com/gabrielcunha1232/gotextforge/internal/core/render"
 )
 
-func severityColor(s lsp.Severity) render.Color {
+func (t *Theme) severityColor(s lsp.Severity) render.Color {
 	switch s {
 	case lsp.SeverityError:
-		return colRed
+		return t.Red
 	case lsp.SeverityWarning:
-		return colYellow
+		return t.Yellow
 	case lsp.SeverityInfo:
-		return colBlue1
+		return t.Blue1
 	default:
-		return colTeal
+		return t.Teal
 	}
 }
 
@@ -74,11 +74,11 @@ func worstSeverity(diags []lineDiag) lsp.Severity {
 	return worst
 }
 
-func applyDiagnostics(styles []render.Style, diags []lineDiag) {
+func (t *Theme) applyDiagnostics(styles []render.Style, diags []lineDiag) {
 	for _, d := range diags {
 		for j := max(d.start, 0); j < min(d.end, len(styles)); j++ {
 			styles[j].Undercurl = true
-			styles[j].Sp = severityColor(d.severity)
+			styles[j].Sp = t.severityColor(d.severity)
 		}
 	}
 }
@@ -110,23 +110,23 @@ func (e *Editor) lspStatusSpans() render.StyledLine {
 	var out render.StyledLine
 	errs, warns := e.diagnosticCounts()
 	if errs > 0 {
-		out = append(out, render.Span{Text: fmt.Sprintf(" E%d", errs), Style: render.Style{Fg: colRed, Bg: colBgStatus, Bold: true}})
+		out = append(out, render.Span{Text: fmt.Sprintf(" E%d", errs), Style: render.Style{Fg: e.theme.Red, Bg: e.theme.BgStatus, Bold: true}})
 	}
 	if warns > 0 {
-		out = append(out, render.Span{Text: fmt.Sprintf(" W%d", warns), Style: render.Style{Fg: colYellow, Bg: colBgStatus, Bold: true}})
+		out = append(out, render.Span{Text: fmt.Sprintf(" W%d", warns), Style: render.Style{Fg: e.theme.Yellow, Bg: e.theme.BgStatus, Bold: true}})
 	}
 
 	switch {
 	case e.lsp.client == nil:
 		if e.highlight {
-			out = append(out, render.Span{Text: " go ", Style: styleStatusC})
+			out = append(out, render.Span{Text: " go ", Style: e.theme.statusC()})
 		}
 	case e.lsp.failed:
-		out = append(out, render.Span{Text: " gopls! ", Style: styleStatusError})
+		out = append(out, render.Span{Text: " gopls! ", Style: e.theme.statusError()})
 	case !e.lsp.ready:
-		out = append(out, render.Span{Text: " gopls… ", Style: styleStatusC})
+		out = append(out, render.Span{Text: " gopls… ", Style: e.theme.statusC()})
 	default:
-		out = append(out, render.Span{Text: " gopls ", Style: render.Style{Fg: colGreen, Bg: colBgStatus}})
+		out = append(out, render.Span{Text: " gopls ", Style: render.Style{Fg: e.theme.Green, Bg: e.theme.BgStatus}})
 	}
 	return out
 }

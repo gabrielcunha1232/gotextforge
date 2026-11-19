@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"image/color"
+
 	tea "charm.land/bubbletea/v2"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/editor"
 	"github.com/gabrielcunha1232/gotextforge/internal/core/input"
@@ -77,6 +79,10 @@ func (m model) View() tea.View {
 	if frame.HideCursor {
 		v.Cursor = nil
 	}
+	if th := m.editor.Theme(); th.PaintBg {
+		v.BackgroundColor = rgba(th.Bg)
+		v.ForegroundColor = rgba(th.Fg)
+	}
 	return v
 }
 
@@ -86,4 +92,8 @@ func Run(ed *editor.Editor) error {
 	})
 	_, err := p.Run()
 	return err
+}
+
+func rgba(c render.Color) color.Color {
+	return color.RGBA{R: c.R, G: c.G, B: c.B, A: 0xff}
 }

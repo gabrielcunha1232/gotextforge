@@ -88,11 +88,17 @@ func (s *EditorService) Start(cols, rows int) Frame {
 }
 
 func (s *EditorService) Theme() map[string]string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	out := map[string]string{}
-	for name, c := range editor.Palette() {
+	for name, c := range s.ed.Theme().Palette() {
 		out[name] = cssColor(c)
 	}
 	return out
+}
+
+func (s *EditorService) SetTheme(name string) Frame {
+	return s.act(func() { s.ed.SetTheme(name) })
 }
 
 func (s *EditorService) Resize(cols, rows int) Frame {

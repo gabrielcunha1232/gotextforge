@@ -67,6 +67,7 @@ func newDocument(buf *buffer.Buffer, path string) *document {
 
 type Editor struct {
 	*document
+	theme      *Theme
 	docs       []*document
 	mode       Mode
 	save       SaveFunc
@@ -99,6 +100,7 @@ func New(buf *buffer.Buffer, path string) *Editor {
 	doc := newDocument(buf, path)
 	e := &Editor{
 		document:   doc,
+		theme:      &ThemeGo,
 		docs:       []*document{doc},
 		save:       storage.Save,
 		load:       loadFile,
@@ -115,6 +117,10 @@ func New(buf *buffer.Buffer, path string) *Editor {
 func (e *Editor) SetExternalChrome(on bool) {
 	e.external = on
 	e.layout()
+}
+
+func (e *Editor) Theme() *Theme {
+	return e.theme
 }
 
 func (e *Editor) ShouldQuit() bool {

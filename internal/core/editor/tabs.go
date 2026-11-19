@@ -179,9 +179,9 @@ func (e *Editor) tabline() render.StyledLine {
 	if len(e.docs) < 2 || e.external {
 		return nil
 	}
-	active := render.Style{Fg: colFg, Bg: colBgHighlight, Bold: true}
-	inactive := render.Style{Fg: colDark3, Bg: colBgFloat}
-	marker := render.Style{Fg: colBlue, Bg: colBgHighlight}
+	active := render.Style{Fg: e.theme.Fg, Bg: e.theme.BgHighlight, Bold: true}
+	inactive := render.Style{Fg: e.theme.Dark3, Bg: e.theme.BgFloat}
+	marker := render.Style{Fg: e.theme.Blue, Bg: e.theme.BgHighlight}
 
 	segments := make([]render.StyledLine, len(e.docs))
 	cur := e.currentIndex()
@@ -217,7 +217,7 @@ func (e *Editor) tabline() render.StyledLine {
 	for _, s := range segments[first:] {
 		line = append(line, s...)
 	}
-	return padTo(truncateLine(line, e.width), e.width, render.Style{Bg: colBgFloat})
+	return padTo(truncateLine(line, e.width), e.width, render.Style{Bg: e.theme.BgFloat})
 }
 
 func (e *Editor) SwitchToFirst() {

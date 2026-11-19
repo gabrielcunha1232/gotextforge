@@ -67,6 +67,7 @@ export type UIStatus = {
 
 export type UIState = {
   Mode: string;
+  Theme: string;
   Focus: "editor" | "explorer" | "terminal" | "docker" | "finder" | "command";
   Root: string;
   Tabs: UITab[] | null;

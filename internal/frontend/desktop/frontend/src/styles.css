@@ -93,6 +93,27 @@ kbd {
 
 .top-spacer {
   min-width: 250px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.theme-btn {
+  font: 11px var(--ui-font);
+  color: var(--c-fg-dark);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.theme-btn:hover {
+  color: var(--c-fg);
+  border-color: var(--accent);
+}
+
+.stripes {
+  display: none;
 }
 
 .layout {
@@ -604,7 +625,7 @@ kbd {
 }
 
 .chip.active {
-  color: var(--c-bg);
+  color: var(--c-on-accent);
   background: var(--accent);
   font-weight: 600;
 }
@@ -774,7 +795,7 @@ kbd {
   align-items: center;
   padding: 0 12px;
   font-weight: 800;
-  color: var(--c-bg);
+  color: var(--c-on-accent);
 }
 
 .status .click {
@@ -965,4 +986,282 @@ kbd {
 .ffoot kbd + kbd,
 .ffoot kbd {
   margin-left: 6px;
+}
+
+:root[data-theme="retro"] {
+  --r-ink: #2b2118;
+  --r-cream: #fbf3de;
+  --r-orange: #e8643c;
+  --r-mustard: #f2b134;
+  --r-teal: #2a9d8f;
+  --r-red: #c8372d;
+  --r-log: #1b140e;
+  --line: var(--r-ink);
+  --accent: var(--r-ink);
+  --ui-font: "Space Mono", ui-monospace, monospace;
+  --title-font: "VT323", monospace;
+}
+
+[data-theme="retro"] * {
+  border-radius: 0 !important;
+  scrollbar-color: var(--r-ink) transparent !important;
+}
+
+[data-theme="retro"] body {
+  font-size: 12px;
+}
+
+[data-theme="retro"] kbd {
+  color: var(--r-ink);
+  background: var(--r-cream);
+  border: 2px solid var(--r-ink);
+}
+
+[data-theme="retro"] .top {
+  height: 50px;
+  color: var(--r-cream);
+  background: var(--r-orange);
+  border-bottom: 3px solid var(--r-ink);
+}
+
+[data-theme="retro"] .brand {
+  font: 26px var(--title-font);
+  letter-spacing: 1px;
+}
+
+[data-theme="retro"] .mark {
+  width: 28px;
+  height: 28px;
+  font: 22px var(--title-font);
+  color: var(--r-ink);
+  background: var(--r-mustard);
+  border: 3px solid var(--r-ink);
+  box-shadow: 3px 3px 0 var(--r-ink);
+}
+
+[data-theme="retro"] .project {
+  font: 700 12px var(--ui-font);
+  color: var(--r-cream);
+}
+
+[data-theme="retro"] .project.click:hover {
+  background: color-mix(in srgb, var(--r-ink) 20%, transparent);
+}
+
+[data-theme="retro"] .search {
+  color: var(--c-fg-dark);
+  background: var(--r-cream);
+  border: 3px solid var(--r-ink);
+  box-shadow: 3px 3px 0 var(--r-ink);
+}
+
+[data-theme="retro"] .search:hover {
+  color: var(--r-ink);
+  border-color: var(--r-ink);
+}
+
+[data-theme="retro"] .theme-btn,
+[data-theme="retro"] .cap-btn,
+[data-theme="retro"] .pane-head button {
+  font: 700 11px var(--ui-font);
+  text-transform: uppercase;
+  color: var(--r-ink);
+  background: var(--r-mustard);
+  border: 3px solid var(--r-ink);
+  box-shadow: 3px 3px 0 var(--r-ink);
+}
+
+[data-theme="retro"] .pane-head button {
+  color: var(--r-cream);
+  background: var(--r-teal);
+}
+
+[data-theme="retro"] .theme-btn:hover,
+[data-theme="retro"] .cap-btn:hover,
+[data-theme="retro"] .pane-head button:hover {
+  color: var(--r-ink);
+  border-color: var(--r-ink);
+  background: var(--r-cream);
+}
+
+[data-theme="retro"] .theme-btn:active,
+[data-theme="retro"] .cap-btn:active,
+[data-theme="retro"] .pane-head button:active {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
+
+[data-theme="retro"] .stripes {
+  display: block;
+  flex: none;
+  height: 12px;
+  background: linear-gradient(var(--r-orange) 0 33%, var(--r-mustard) 33% 66%, var(--r-teal) 66%);
+  border-bottom: 3px solid var(--r-ink);
+}
+
+[data-theme="retro"] .rail {
+  border-right: 3px solid var(--r-ink);
+  color: var(--r-ink);
+}
+
+[data-theme="retro"] .rail span:hover {
+  background: var(--c-bg-sel);
+}
+
+[data-theme="retro"] .rail .sel {
+  color: var(--r-ink);
+  background: var(--r-mustard);
+  box-shadow: none;
+  outline: 3px solid var(--r-ink);
+}
+
+[data-theme="retro"] .side {
+  border-right: 3px solid var(--r-ink);
+}
+
+[data-theme="retro"] .cap,
+[data-theme="retro"] .ftitle {
+  font: 20px var(--title-font);
+  letter-spacing: 1px;
+  color: var(--r-ink);
+}
+
+[data-theme="retro"] .cap-btn {
+  padding: 1px 6px;
+  font-size: 10px;
+  box-shadow: 2px 2px 0 var(--r-ink);
+}
+
+[data-theme="retro"] .side-keys,
+[data-theme="retro"] .ffoot {
+  border-top: 3px dashed var(--r-ink);
+}
+
+[data-theme="retro"] .tree .row:hover {
+  background: var(--c-bg-highlight);
+}
+
+[data-theme="retro"] .tree .sel-focus,
+[data-theme="retro"] .fitem.selected,
+[data-theme="retro"] .term.focused .line.selected {
+  box-shadow: inset 4px 0 var(--r-ink);
+}
+
+[data-theme="retro"] .tabs {
+  border-bottom: 3px solid var(--r-ink);
+}
+
+[data-theme="retro"] .tab {
+  font-weight: 700;
+  border-right: 3px solid var(--r-ink);
+}
+
+[data-theme="retro"] .tab.active,
+[data-theme="retro"] .tab.active:hover {
+  color: var(--r-ink);
+  background: var(--r-mustard);
+  box-shadow: none;
+}
+
+[data-theme="retro"] .crumb {
+  border-bottom: 3px dashed var(--r-ink);
+  height: 31px;
+}
+
+[data-theme="retro"] .bottom {
+  border-top: 3px solid var(--r-ink);
+}
+
+[data-theme="retro"] .btabs {
+  gap: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-bottom: 3px solid var(--r-ink);
+}
+
+[data-theme="retro"] .btabs > span:not(.btabs-push) {
+  padding: 0 8px;
+}
+
+[data-theme="retro"] .btabs .active {
+  color: var(--r-ink);
+  background: var(--r-mustard);
+  box-shadow: inset 3px 0 var(--r-ink), inset -3px 0 var(--r-ink);
+}
+
+[data-theme="retro"] .btabs .count {
+  color: var(--r-cream);
+  background: var(--r-red);
+}
+
+[data-theme="retro"] .pane-head {
+  border-bottom: 3px solid var(--r-ink);
+}
+
+[data-theme="retro"] .chip {
+  font-weight: 700;
+  text-transform: uppercase;
+  border: 3px solid transparent;
+}
+
+[data-theme="retro"] .chip.active {
+  color: var(--r-ink);
+  background: var(--r-mustard);
+  border-color: var(--r-ink);
+}
+
+[data-theme="retro"] .term {
+  font: 19px/1.1 var(--title-font);
+  background: var(--r-log);
+}
+
+[data-theme="retro"] .term .line {
+  color: #9df0b0;
+}
+
+[data-theme="retro"] .term .k-e,
+[data-theme="retro"] .term .k-l {
+  color: #ff8f7a;
+}
+
+[data-theme="retro"] .term .k-w {
+  color: var(--r-mustard);
+}
+
+[data-theme="retro"] .term .k-o {
+  color: #c8ffd6;
+}
+
+[data-theme="retro"] .term .line.selected,
+[data-theme="retro"] .term.focused .line.selected {
+  background: #3a2c1f;
+}
+
+[data-theme="retro"] .term.focused .line.selected {
+  box-shadow: inset 4px 0 var(--r-mustard);
+}
+
+[data-theme="retro"] .status {
+  height: 28px;
+  border-top: 3px solid var(--r-ink);
+}
+
+[data-theme="retro"] .status .mode {
+  font: 20px var(--title-font);
+  letter-spacing: 1px;
+  border-right: 3px solid var(--r-ink);
+}
+
+[data-theme="retro"] .finder-backdrop {
+  background: radial-gradient(color-mix(in srgb, var(--r-ink) 45%, transparent) 1px, transparent 1px) 0 0 / 22px 22px,
+    color-mix(in srgb, var(--c-bg) 55%, transparent);
+}
+
+[data-theme="retro"] .finder {
+  border: 3px solid var(--r-ink);
+  box-shadow: 8px 8px 0 var(--r-ink);
+}
+
+[data-theme="retro"] .finput {
+  border-bottom: 3px solid var(--r-ink);
 }

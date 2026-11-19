@@ -171,24 +171,24 @@ var kindTags = map[int]string{
 	17: "file", 18: "ref", 19: "dir", 20: "enum", 21: "const", 22: "struct", 23: "event", 24: "op", 25: "type",
 }
 
-func kindColor(kind int) render.Color {
+func (t *Theme) kindColor(kind int) render.Color {
 	switch kind {
 	case 2, 3, 4:
-		return colBlue
+		return t.Blue
 	case 5, 10:
-		return colGreen
+		return t.Green
 	case 6, 12:
-		return colMagenta
+		return t.Magenta
 	case 7, 8, 22, 25:
-		return colBlue1
+		return t.Blue1
 	case 9:
-		return colOrange
+		return t.Orange
 	case 14:
-		return colMagenta
+		return t.Magenta
 	case 21, 13, 20:
-		return colOrange
+		return t.Orange
 	default:
-		return colFgDark
+		return t.FgDark
 	}
 }
 
@@ -211,17 +211,17 @@ func (e *Editor) completionBox() []render.StyledLine {
 	var box []render.StyledLine
 	for i := first; i < last; i++ {
 		it := c.items[i]
-		bg := colBgFloat
+		bg := e.theme.BgFloat
 		if i == c.sel {
-			bg = colBgSel
+			bg = e.theme.BgSel
 		}
 		tag := kindTags[it.Kind]
 		row := render.StyledLine{
-			{Text: " " + padRight(tag, 6), Style: render.Style{Fg: kindColor(it.Kind), Bg: bg}},
-			{Text: padRight(truncateText(sanitize(it.Label), labelW), labelW), Style: render.Style{Fg: colFg, Bg: bg, Bold: i == c.sel}},
+			{Text: " " + padRight(tag, 6), Style: render.Style{Fg: e.theme.kindColor(it.Kind), Bg: bg}},
+			{Text: padRight(truncateText(sanitize(it.Label), labelW), labelW), Style: render.Style{Fg: e.theme.Fg, Bg: bg, Bold: i == c.sel}},
 		}
 		if detailW > 0 {
-			row = append(row, render.Span{Text: "  " + padRight(truncateText(sanitize(it.Detail), detailW), detailW), Style: render.Style{Fg: colComment, Bg: bg}})
+			row = append(row, render.Span{Text: "  " + padRight(truncateText(sanitize(it.Detail), detailW), detailW), Style: render.Style{Fg: e.theme.Comment, Bg: bg}})
 		}
 		row = append(row, render.Span{Text: " ", Style: render.Style{Bg: bg}})
 		box = append(box, row)

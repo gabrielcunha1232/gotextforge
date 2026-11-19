@@ -70,7 +70,7 @@ func TestEditorComGoplsDeVerdade(t *testing.T) {
 	f := ed.Frame()
 	under := false
 	for _, s := range f.Lines[6] {
-		if s.Style.Undercurl && s.Style.Sp == colRed {
+		if s.Style.Undercurl && s.Style.Sp == ThemeGo.Red {
 			under = true
 		}
 	}

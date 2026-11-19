@@ -426,16 +426,16 @@ func terminalLineKind(line string) byte {
 	return kindPlain
 }
 
-func terminalLineStyle(line string) render.Style {
+func (t *Theme) terminalLineStyle(line string) render.Style {
 	switch terminalLineKind(line) {
 	case kindError, kindLocation:
-		return render.Style{Fg: colRed}
+		return render.Style{Fg: t.Red}
 	case kindOK:
-		return render.Style{Fg: colGreen}
+		return render.Style{Fg: t.Green}
 	case kindWarning:
-		return render.Style{Fg: colYellow}
+		return render.Style{Fg: t.Yellow}
 	}
-	return render.Style{Fg: colFgDark}
+	return render.Style{Fg: t.FgDark}
 }
 
 func (e *Editor) terminalKinds() []byte {
@@ -454,29 +454,29 @@ func (e *Editor) terminalKinds() []byte {
 
 func (e *Editor) terminalPanel(rows, width int) []render.StyledLine {
 	t := &e.term
-	bar := render.Style{Fg: colFgDark, Bg: colBgStatus}
+	bar := render.Style{Fg: e.theme.FgDark, Bg: e.theme.BgStatus}
 
 	var color render.Color
 	var status string
 	elapsed := t.snap.Elapsed.Round(100 * time.Millisecond)
 	switch {
 	case t.job == nil:
-		color, status = colFgGutter, "Espaço t n ou :!comando para executar"
+		color, status = e.theme.Gutter, "Espaço t n ou :!comando para executar"
 	case t.snap.State == runner.Running:
-		color, status = colYellow, fmt.Sprintf("rodando %v · Ctrl+c cancela", elapsed)
+		color, status = e.theme.Yellow, fmt.Sprintf("rodando %v · Ctrl+c cancela", elapsed)
 	case t.snap.State == runner.Succeeded:
-		color, status = colGreen, fmt.Sprintf("ok · %v", elapsed)
+		color, status = e.theme.Green, fmt.Sprintf("ok · %v", elapsed)
 	case t.snap.State == runner.Canceled:
-		color, status = colDark3, "cancelado"
+		color, status = e.theme.Dark3, "cancelado"
 	default:
-		color, status = colRed, fmt.Sprintf("saiu com código %d · %v", t.snap.ExitCode, elapsed)
+		color, status = e.theme.Red, fmt.Sprintf("saiu com código %d · %v", t.snap.ExitCode, elapsed)
 	}
 
-	header := render.StyledLine{{Text: " TERMINAL ", Style: render.Style{Fg: colBlack, Bg: color, Bold: true}}}
+	header := render.StyledLine{{Text: " TERMINAL ", Style: render.Style{Fg: e.theme.on(color), Bg: color, Bold: true}}}
 	dir := e.terminalDir()
-	header = append(header, render.Span{Text: " " + shortenPath(sanitize(dir), max(width/3, 16)) + " ", Style: render.Style{Fg: colBlue, Bg: colBgStatus}})
+	header = append(header, render.Span{Text: " " + shortenPath(sanitize(dir), max(width/3, 16)) + " ", Style: render.Style{Fg: e.theme.Blue, Bg: e.theme.BgStatus}})
 	if t.last != "" {
-		header = append(header, render.Span{Text: "$ " + sanitize(t.last) + " ", Style: render.Style{Fg: colFg, Bg: colBgStatus, Bold: true}})
+		header = append(header, render.Span{Text: "$ " + sanitize(t.last) + " ", Style: render.Style{Fg: e.theme.Fg, Bg: e.theme.BgStatus, Bold: true}})
 	}
 	right := render.Span{Text: " " + status + " ", Style: bar}
 	if gap := width - header.Width() - (render.StyledLine{right}).Width(); gap > 0 {
@@ -499,16 +499,16 @@ func (e *Editor) terminalPanel(rows, width int) []render.StyledLine {
 		var line render.StyledLine
 		switch {
 		case i < len(lines):
-			style := terminalLineStyle(lines[i])
+			style := e.theme.terminalLineStyle(lines[i])
 			if focused && i == t.sel {
-				style.Bg = colBgSel
+				style.Bg = e.theme.BgSel
 			}
 			text := " " + sanitize(lines[i])
 			line = padTo(truncateLine(render.StyledLine{{Text: text, Style: style}}, width), width, render.Style{Bg: style.Bg})
 		case i == 0 && t.job != nil && t.snap.State == runner.Running:
-			line = render.StyledLine{{Text: " aguardando saída…", Style: render.Style{Fg: colDark3, Italic: true}}}
+			line = render.StyledLine{{Text: " aguardando saída…", Style: render.Style{Fg: e.theme.Dark3, Italic: true}}}
 		case i == 0 && t.job != nil:
-			line = render.StyledLine{{Text: " (o comando não escreveu nada)", Style: render.Style{Fg: colDark3, Italic: true}}}
+			line = render.StyledLine{{Text: " (o comando não escreveu nada)", Style: render.Style{Fg: e.theme.Dark3, Italic: true}}}
 		}
 		out = append(out, truncateLine(line, width))
 	}

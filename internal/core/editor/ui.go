@@ -88,9 +88,9 @@ func (e *Editor) commandLine() render.StyledLine {
 	case e.mode == ModeCommand || e.mode == ModeSearch || e.mode == ModePrompt:
 		return e.statusLine()
 	case e.message != "":
-		style := render.Style{Fg: colFgDark}
+		style := render.Style{Fg: e.theme.FgDark}
 		if isErrorMessage(e.message) {
-			style = render.Style{Fg: colRed, Bold: true}
+			style = render.Style{Fg: e.theme.Red, Bold: true}
 		}
 		return truncateLine(render.StyledLine{{Text: sanitize(e.message), Style: style}}, e.width)
 	}
@@ -116,12 +116,12 @@ func (e *Editor) editorFrame() render.Frame {
 		line := e.gutter(i, gw, current, diags[i])
 		line = append(line, e.renderBufferLine(i, textWidth, current, diags[i])...)
 		if current {
-			line = padTo(line, e.width, render.Style{Bg: colBgHighlight})
+			line = padTo(line, e.width, render.Style{Bg: e.theme.BgHighlight})
 		}
 		lines = append(lines, line)
 	}
 	for len(lines) < vpHeight {
-		lines = append(lines, render.StyledLine{{Text: "~", Style: styleTilde}})
+		lines = append(lines, render.StyledLine{{Text: "~", Style: e.theme.tilde()}})
 	}
 
 	if e.showIntro() {
@@ -131,7 +131,7 @@ func (e *Editor) editorFrame() render.Frame {
 	cursor := e.screenCursor(start, gw)
 	switch {
 	case e.hover != nil && e.mode == ModeNormal:
-		e.placeBox(lines, e.hover.render(max(e.width-6, 1)), cursor.Row, cursor.Col)
+		e.placeBox(lines, e.hover.render(e.theme, max(e.width-6, 1)), cursor.Row, cursor.Col)
 	case e.comp != nil && e.mode == ModeInsert:
 		anchor := gw + view.ScreenCol(e.buf.Line(e.cursor.Line), e.comp.start.Col, view.DefaultTabStop)
 		e.placeBox(lines, e.completionBox(), cursor.Row, max(anchor-7, 0))
@@ -174,15 +174,15 @@ func (e *Editor) gutter(i, width int, current bool, diags []lineDiag) render.Sty
 		return nil
 	}
 	if current {
-		return render.StyledLine{{Text: fmt.Sprintf(" %-*d ", width-2, i+1), Style: styleCursorLineNr}}
+		return render.StyledLine{{Text: fmt.Sprintf(" %-*d ", width-2, i+1), Style: e.theme.cursorLineNr()}}
 	}
 	rel := i - e.cursor.Line
 	if rel < 0 {
 		rel = -rel
 	}
-	style := styleLineNr
+	style := e.theme.lineNr()
 	if len(diags) > 0 {
-		style = render.Style{Fg: severityColor(worstSeverity(diags)), Bold: true}
+		style = render.Style{Fg: e.theme.severityColor(worstSeverity(diags)), Bold: true}
 	}
 	return render.StyledLine{{Text: fmt.Sprintf(" %*d ", width-2, rel), Style: style}}
 }
@@ -191,7 +191,7 @@ func (e *Editor) renderBufferLine(i, width int, current bool, diags []lineDiag) 
 	runes := e.buf.Line(i)
 	var bg render.Color
 	if current {
-		bg = colBgHighlight
+		bg = e.theme.BgHighlight
 	}
 
 	styles := make([]render.Style, len(runes))
@@ -202,17 +202,17 @@ func (e *Editor) renderBufferLine(i, width int, current bool, diags []lineDiag) 
 		tokens, _ := syntax.HighlightLine(runes, e.syntax.StateAt(e.buf, i))
 		for _, t := range tokens {
 			for j := t.Start; j < t.End; j++ {
-				styles[j] = withBg(theme[t.Kind], bg)
+				styles[j] = withBg(e.theme.Syntax[t.Kind], bg)
 			}
 		}
 	}
 	e.applySearchHighlight(i, runes, styles)
-	applyDiagnostics(styles, diags)
+	e.theme.applyDiagnostics(styles, diags)
 
 	line := view.RenderLine(runes, func(j int) render.Style { return styles[j] }, width, view.DefaultTabStop)
 	if text, sev := virtualText(diags); text != "" {
 		if room := width - line.Width(); room > 4 {
-			line = append(line, render.Span{Text: truncateText(text, room), Style: render.Style{Fg: severityColor(sev), Bg: bg, Italic: true}})
+			line = append(line, render.Span{Text: truncateText(text, room), Style: render.Style{Fg: e.theme.severityColor(sev), Bg: bg, Italic: true}})
 		}
 	}
 	return line
@@ -243,7 +243,7 @@ func (e *Editor) statusLine() render.StyledLine {
 		return render.StyledLine{{Text: view.FormatLine(cmd, e.width, view.DefaultTabStop)}}
 	}
 
-	modeStyle := render.Style{Fg: colBlack, Bg: modeColors[e.mode], Bold: true}
+	modeStyle := render.Style{Fg: e.theme.on(e.theme.Modes[e.mode]), Bg: e.theme.Modes[e.mode], Bold: true}
 
 	name := sanitize(e.filename)
 	if e.buf.Modified() {
@@ -252,24 +252,24 @@ func (e *Editor) statusLine() render.StyledLine {
 
 	left := render.StyledLine{
 		{Text: " " + modeNames[e.mode] + " ", Style: modeStyle},
-		{Text: " " + name + " ", Style: styleStatusB},
+		{Text: " " + name + " ", Style: e.theme.statusB()},
 	}
 	if e.message != "" {
-		style := styleStatusC
+		style := e.theme.statusC()
 		if isErrorMessage(e.message) {
-			style = styleStatusError
+			style = e.theme.statusError()
 		}
 		left = append(left, render.Span{Text: " " + sanitize(e.message), Style: style})
 	}
 
 	var right render.StyledLine
 	if pending := e.parser.Pending(); pending != "" {
-		right = append(right, render.Span{Text: " " + sanitize(pending) + " ", Style: styleStatusPending})
+		right = append(right, render.Span{Text: " " + sanitize(pending) + " ", Style: e.theme.statusPending()})
 	}
 	right = append(right, e.lspStatusSpans()...)
 	right = append(right,
-		render.Span{Text: " " + e.progress() + " ", Style: styleStatusC},
-		render.Span{Text: fmt.Sprintf(" %d:%d ", e.cursor.Line+1, e.cursor.Col+1), Style: styleStatusB},
+		render.Span{Text: " " + e.progress() + " ", Style: e.theme.statusC()},
+		render.Span{Text: fmt.Sprintf(" %d:%d ", e.cursor.Line+1, e.cursor.Col+1), Style: e.theme.statusB()},
 	)
 
 	if left.Width()+right.Width() > e.width {
@@ -278,7 +278,7 @@ func (e *Editor) statusLine() render.StyledLine {
 	gap := e.width - left.Width() - right.Width()
 	line := left
 	if gap > 0 {
-		line = append(line, render.Span{Text: strings.Repeat(" ", gap), Style: styleStatusC})
+		line = append(line, render.Span{Text: strings.Repeat(" ", gap), Style: e.theme.statusC()})
 	}
 	line = append(line, right...)
 	return truncateLine(line, e.width)

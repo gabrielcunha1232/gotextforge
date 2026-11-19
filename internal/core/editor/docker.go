@@ -476,14 +476,14 @@ func composeTemplate(name string) string {
 `
 }
 
-func dockerStateColor(state string) render.Color {
+func (t *Theme) dockerStateColor(state string) render.Color {
 	switch {
 	case strings.HasPrefix(state, "running"):
-		return colGreen
+		return t.Green
 	case strings.HasPrefix(state, "paused"), strings.HasPrefix(state, "created"):
-		return colYellow
+		return t.Yellow
 	default:
-		return colRed
+		return t.Red
 	}
 }
 
@@ -496,13 +496,13 @@ func dockerDot(state string) string {
 
 func (e *Editor) dockerPanel(rows, width int) []render.StyledLine {
 	d := &e.dock
-	bar := render.Style{Fg: colFgDark, Bg: colBgStatus}
+	bar := render.Style{Fg: e.theme.FgDark, Bg: e.theme.BgStatus}
 
-	header := render.StyledLine{{Text: " DOCKER ", Style: render.Style{Fg: colBlack, Bg: colBlue1, Bold: true}}}
+	header := render.StyledLine{{Text: " DOCKER ", Style: render.Style{Fg: e.theme.on(e.theme.Blue1), Bg: e.theme.Blue1, Bold: true}}}
 	for i, name := range dockerTabNames {
-		style := render.Style{Fg: colDark3, Bg: colBgStatus}
+		style := render.Style{Fg: e.theme.Dark3, Bg: e.theme.BgStatus}
 		if dockerTab(i) == d.tab {
-			style = render.Style{Fg: colFg, Bg: colBgSel, Bold: true}
+			style = render.Style{Fg: e.theme.Fg, Bg: e.theme.BgSel, Bold: true}
 		}
 		header = append(header, render.Span{Text: " " + name + " ", Style: style})
 	}
@@ -520,7 +520,7 @@ func (e *Editor) dockerPanel(rows, width int) []render.StyledLine {
 	lines := e.dockerBody()
 
 	if d.err != nil {
-		msg := render.StyledLine{{Text: " " + sanitize(d.err.Error()), Style: render.Style{Fg: colRed}}}
+		msg := render.StyledLine{{Text: " " + sanitize(d.err.Error()), Style: render.Style{Fg: e.theme.Red}}}
 		out = append(out, truncateLine(msg, width))
 		for len(out) < rows {
 			out = append(out, render.StyledLine{})
@@ -542,20 +542,20 @@ func (e *Editor) dockerPanel(rows, width int) []render.StyledLine {
 		case i < len(lines):
 			line = lines[i]
 			if i == d.sel {
-				line = withBgSpans(line, colBgSel)
+				line = withBgSpans(line, e.theme.BgSel)
 			}
-			line = padTo(truncateLine(line, width), width, render.Style{Bg: selBg(i == d.sel)})
+			line = padTo(truncateLine(line, width), width, render.Style{Bg: e.theme.selBg(i == d.sel)})
 		case i == 0:
-			line = render.StyledLine{{Text: " (nada aqui)", Style: render.Style{Fg: colDark3, Italic: true}}}
+			line = render.StyledLine{{Text: " (nada aqui)", Style: render.Style{Fg: e.theme.Dark3, Italic: true}}}
 		}
 		out = append(out, truncateLine(line, width))
 	}
 	return out
 }
 
-func selBg(sel bool) render.Color {
+func (t *Theme) selBg(sel bool) render.Color {
 	if sel {
-		return colBgSel
+		return t.BgSel
 	}
 	return render.Color{}
 }
@@ -580,10 +580,10 @@ func (e *Editor) dockerBody() []render.StyledLine {
 				state = fmt.Sprintf("exited (%d)", s.ExitCode)
 			}
 			out = append(out, render.StyledLine{
-				{Text: " " + dockerDot(s.State) + " ", Style: render.Style{Fg: dockerStateColor(s.State)}},
-				{Text: pad(s.Service, 14), Style: render.Style{Fg: colFg}},
-				{Text: pad(state, 18), Style: render.Style{Fg: dockerStateColor(s.State)}},
-				{Text: s.Ports, Style: render.Style{Fg: colFgDark}},
+				{Text: " " + dockerDot(s.State) + " ", Style: render.Style{Fg: e.theme.dockerStateColor(s.State)}},
+				{Text: pad(s.Service, 14), Style: render.Style{Fg: e.theme.Fg}},
+				{Text: pad(state, 18), Style: render.Style{Fg: e.theme.dockerStateColor(s.State)}},
+				{Text: s.Ports, Style: render.Style{Fg: e.theme.FgDark}},
 			})
 		}
 	case dockImages:
@@ -593,18 +593,18 @@ func (e *Editor) dockerBody() []render.StyledLine {
 				repo += ":" + img.Tag
 			}
 			out = append(out, render.StyledLine{
-				{Text: "   " + pad(repo, 34), Style: render.Style{Fg: colFg}},
-				{Text: pad(img.Size, 12), Style: render.Style{Fg: colFgDark}},
-				{Text: shortID(img.ID), Style: render.Style{Fg: colDark3}},
+				{Text: "   " + pad(repo, 34), Style: render.Style{Fg: e.theme.Fg}},
+				{Text: pad(img.Size, 12), Style: render.Style{Fg: e.theme.FgDark}},
+				{Text: shortID(img.ID), Style: render.Style{Fg: e.theme.Dark3}},
 			})
 		}
 	default:
 		for _, c := range d.containers {
 			out = append(out, render.StyledLine{
-				{Text: " " + dockerDot(c.State) + " ", Style: render.Style{Fg: dockerStateColor(c.State)}},
-				{Text: pad(c.Name, 18), Style: render.Style{Fg: colFg}},
-				{Text: pad(sanitize(c.Status), 26), Style: render.Style{Fg: dockerStateColor(c.State)}},
-				{Text: c.Ports, Style: render.Style{Fg: colFgDark}},
+				{Text: " " + dockerDot(c.State) + " ", Style: render.Style{Fg: e.theme.dockerStateColor(c.State)}},
+				{Text: pad(c.Name, 18), Style: render.Style{Fg: e.theme.Fg}},
+				{Text: pad(sanitize(c.Status), 26), Style: render.Style{Fg: e.theme.dockerStateColor(c.State)}},
+				{Text: c.Ports, Style: render.Style{Fg: e.theme.FgDark}},
 			})
 		}
 	}

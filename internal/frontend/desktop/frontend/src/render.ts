@@ -1,8 +1,7 @@
 import type { Pos, UIState } from "./types";
 
-export const BG = "#0b0e13";
-export const FG = "#d6e2ec";
-const CURSOR = "#d6e2ec";
+const BG = "#0b0e13";
+const FG = "#d6e2ec";
 const FONT_SIZE = 15;
 const FONT_FAMILY = `"Cascadia Mono", Consolas, monospace`;
 
@@ -42,6 +41,9 @@ export function measureCell(ctx: CanvasRenderingContext2D): Cell {
 
 export class Renderer {
   private dpr = 1;
+  private bg = BG;
+  private fg = FG;
+  private last: Frame | null = null;
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -68,10 +70,19 @@ export class Renderer {
     this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
   }
 
+  setColors(bg: string, fg: string) {
+    this.bg = bg || BG;
+    this.fg = fg || FG;
+    if (this.last) {
+      this.draw(this.last);
+    }
+  }
+
   draw(frame: Frame) {
+    this.last = frame;
     this.fit();
     const ctx = this.ctx;
-    ctx.fillStyle = BG;
+    ctx.fillStyle = this.bg;
     ctx.fillRect(0, 0, this.canvas.clientWidth, this.canvas.clientHeight);
     ctx.textBaseline = "alphabetic";
 
@@ -101,7 +112,7 @@ export class Renderer {
     col = 0;
     for (const s of spans) {
       const n = [...s.t].length;
-      this.drawText(s, s.fg || FG, row, col);
+      this.drawText(s, s.fg || this.fg, row, col);
       if (s.u || s.c) {
         this.drawUnderline(s, row, col, n);
       }
@@ -210,7 +221,7 @@ export class Renderer {
     const x0 = this.x(col);
     const x1 = this.x(col + n);
     const y = row * this.cell.h + this.cell.ascent + 2.5;
-    ctx.strokeStyle = s.sp || s.fg || FG;
+    ctx.strokeStyle = s.sp || s.fg || this.fg;
     ctx.lineWidth = 1;
     ctx.beginPath();
     if (s.c) {
@@ -234,7 +245,7 @@ export class Renderer {
     const ctx = this.ctx;
     const x0 = this.x(col);
     const y0 = row * this.cell.h;
-    ctx.fillStyle = CURSOR;
+    ctx.fillStyle = this.fg;
 
     if (bar) {
       ctx.fillRect(x0, y0, Math.max(2, Math.round(this.dpr)) / this.dpr, this.cell.h);
@@ -244,7 +255,7 @@ export class Renderer {
     ctx.fillRect(x0, y0, this.x(col + 1) - x0, this.cell.h);
     const under = spanAt(spans, col);
     if (under) {
-      this.drawText(under.span, BG, row, col);
+      this.drawText(under.span, this.bg, row, col);
     }
   }
 }

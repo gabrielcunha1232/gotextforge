@@ -475,7 +475,7 @@ func (e *Editor) explorerPanel(rows, width int) []render.StyledLine {
 	x := &e.explorer
 	inner := width - 1
 	focused := e.mode == ModeExplorer
-	border := render.Span{Text: "│", Style: render.Style{Fg: colFgGutter}}
+	border := render.Span{Text: "│", Style: render.Style{Fg: e.theme.Gutter}}
 
 	visible := rows - 1
 	if x.sel < x.top {
@@ -487,7 +487,7 @@ func (e *Editor) explorerPanel(rows, width int) []render.StyledLine {
 	x.top = max(min(x.top, len(x.rows)-visible), 0)
 
 	out := make([]render.StyledLine, 0, rows)
-	header := render.StyledLine{{Text: " " + sanitize(x.tree.name), Style: render.Style{Fg: colBlue, Bold: true}}}
+	header := render.StyledLine{{Text: " " + sanitize(x.tree.name), Style: render.Style{Fg: e.theme.Blue, Bold: true}}}
 	out = append(out, append(padTo(truncateLine(header, inner), inner, render.Style{}), border))
 
 	for i := x.top; i < x.top+visible; i++ {
@@ -497,19 +497,19 @@ func (e *Editor) explorerPanel(rows, width int) []render.StyledLine {
 		}
 		n := x.rows[i]
 		icon := "  "
-		style := render.Style{Fg: colFg}
+		style := render.Style{Fg: e.theme.Fg}
 		switch {
 		case n.dir && n.expanded:
-			icon, style = "▾ ", render.Style{Fg: colBlue}
+			icon, style = "▾ ", render.Style{Fg: e.theme.Blue}
 		case n.dir:
-			icon, style = "▸ ", render.Style{Fg: colBlue}
+			icon, style = "▸ ", render.Style{Fg: e.theme.Blue}
 		case strings.HasSuffix(n.name, ".go"):
-			style = render.Style{Fg: colBlue1}
+			style = render.Style{Fg: e.theme.Blue1}
 		case strings.HasPrefix(n.name, "."):
-			style = render.Style{Fg: colDark3}
+			style = render.Style{Fg: e.theme.Dark3}
 		}
 		if e.path != "" && samePath(n.path, e.path) {
-			style = render.Style{Fg: colOrange, Bold: true}
+			style = render.Style{Fg: e.theme.Orange, Bold: true}
 		}
 		name := sanitize(n.name)
 		if n.dir {
@@ -520,18 +520,18 @@ func (e *Editor) explorerPanel(rows, width int) []render.StyledLine {
 		}
 		bg := render.Color{}
 		if i == x.sel {
-			bg = colBgHighlight
+			bg = e.theme.BgHighlight
 			if focused {
-				bg = colBgSel
+				bg = e.theme.BgSel
 			}
 		}
 		line := render.StyledLine{
 			{Text: strings.Repeat("  ", n.depth) + " ", Style: render.Style{Bg: bg}},
-			{Text: icon, Style: render.Style{Fg: colFgGutter, Bg: bg}},
+			{Text: icon, Style: render.Style{Fg: e.theme.Gutter, Bg: bg}},
 			{Text: name, Style: withBg(style, bg)},
 		}
 		if line.Width() > inner {
-			line = append(truncateLine(line, inner-1), render.Span{Text: "…", Style: render.Style{Fg: colDark3, Bg: bg}})
+			line = append(truncateLine(line, inner-1), render.Span{Text: "…", Style: render.Style{Fg: e.theme.Dark3, Bg: bg}})
 		}
 		out = append(out, append(padTo(line, inner, render.Style{Bg: bg}), border))
 	}

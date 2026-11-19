@@ -108,9 +108,9 @@ func (e *Editor) applySearchHighlight(line int, runes []rune, styles []render.St
 	}
 	n := len(q.Pattern)
 	for _, start := range q.Matches(runes) {
-		style := styleSearch
+		style := e.theme.search()
 		if e.mode != ModeSearch && line == e.cursor.Line && start == e.cursor.Col {
-			style = styleSearchCurrent
+			style = e.theme.searchCurrent()
 		}
 		for j := start; j < start+n && j < len(styles); j++ {
 			styles[j].Fg = style.Fg

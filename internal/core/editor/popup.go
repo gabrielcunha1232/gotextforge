@@ -102,7 +102,7 @@ func wrapWords(text string, width int) []string {
 	return out
 }
 
-func (h *hoverPopup) render(maxInner int) []render.StyledLine {
+func (h *hoverPopup) render(th *Theme, maxInner int) []render.StyledLine {
 	inner := 0
 	for _, l := range h.lines {
 		if !l.separator {
@@ -111,13 +111,13 @@ func (h *hoverPopup) render(maxInner int) []render.StyledLine {
 	}
 	inner = max(min(inner, maxInner, hoverMaxWidth), 1)
 
-	textStyle := render.Style{Fg: colFg, Bg: colBgFloat}
+	textStyle := render.Style{Fg: th.Fg, Bg: th.BgFloat}
 	var body []render.StyledLine
 	var state syntax.State
 	for _, l := range h.lines {
 		switch {
 		case l.separator:
-			body = append(body, render.StyledLine{{Text: strings.Repeat("─", inner), Style: render.Style{Fg: colFgGutter, Bg: colBgFloat}}})
+			body = append(body, render.StyledLine{{Text: strings.Repeat("─", inner), Style: render.Style{Fg: th.Gutter, Bg: th.BgFloat}}})
 		case l.code:
 			runes := []rune(l.text)
 			tokens, out := syntax.HighlightLine(runes, state)
@@ -128,9 +128,9 @@ func (h *hoverPopup) render(maxInner int) []render.StyledLine {
 			}
 			for _, t := range tokens {
 				for j := t.Start; j < t.End; j++ {
-					styles[j] = withBg(theme[t.Kind], colBgFloat)
+					styles[j] = withBg(th.Syntax[t.Kind], th.BgFloat)
 					if styles[j].Fg == (render.Color{}) {
-						styles[j].Fg = colFg
+						styles[j].Fg = th.Fg
 					}
 				}
 			}
@@ -139,7 +139,7 @@ func (h *hoverPopup) render(maxInner int) []render.StyledLine {
 		default:
 			style := textStyle
 			if l.heading {
-				style = render.Style{Fg: colBlue, Bg: colBgFloat, Bold: true}
+				style = render.Style{Fg: th.Blue, Bg: th.BgFloat, Bold: true}
 			}
 			for _, w := range wrapWords(l.text, inner) {
 				body = append(body, render.StyledLine{{Text: sanitize(w), Style: style}})
@@ -147,11 +147,11 @@ func (h *hoverPopup) render(maxInner int) []render.StyledLine {
 		}
 	}
 	if len(body) > hoverMaxHeight {
-		body = append(body[:hoverMaxHeight-1], render.StyledLine{{Text: "…", Style: render.Style{Fg: colComment, Bg: colBgFloat}}})
+		body = append(body[:hoverMaxHeight-1], render.StyledLine{{Text: "…", Style: render.Style{Fg: th.Comment, Bg: th.BgFloat}}})
 	}
 
-	border := render.Style{Fg: colBorder, Bg: colBgFloat}
-	fill := render.Style{Bg: colBgFloat}
+	border := render.Style{Fg: th.Border, Bg: th.BgFloat}
+	fill := render.Style{Bg: th.BgFloat}
 	box := []render.StyledLine{{{Text: "╭" + strings.Repeat("─", inner+2) + "╮", Style: border}}}
 	for _, l := range body {
 		row := render.StyledLine{{Text: "│ ", Style: border}}
@@ -200,10 +200,10 @@ func (e *Editor) placeBox(lines []render.StyledLine, box []render.StyledLine, an
 	case len(box) <= above:
 		row = anchorRow - len(box)
 	case below >= above:
-		box = shrinkBox(box, below)
+		box = e.theme.shrinkBox(box, below)
 		row = anchorRow + 1
 	default:
-		box = shrinkBox(box, above)
+		box = e.theme.shrinkBox(box, above)
 		row = anchorRow - len(box)
 	}
 	if len(box) == 0 {
@@ -220,7 +220,7 @@ func (e *Editor) placeBox(lines []render.StyledLine, box []render.StyledLine, an
 	}
 }
 
-func shrinkBox(box []render.StyledLine, n int) []render.StyledLine {
+func (t *Theme) shrinkBox(box []render.StyledLine, n int) []render.StyledLine {
 	switch {
 	case n <= 0:
 		return nil
@@ -229,11 +229,11 @@ func shrinkBox(box []render.StyledLine, n int) []render.StyledLine {
 	case n < 3:
 		return box[:n]
 	}
-	border := render.Style{Fg: colBorder, Bg: colBgFloat}
+	border := render.Style{Fg: t.Border, Bg: t.BgFloat}
 	inner := box[0].Width() - 4
 	more := render.StyledLine{
 		{Text: "│ ", Style: border},
-		{Text: padRight("…", inner), Style: render.Style{Fg: colComment, Bg: colBgFloat}},
+		{Text: padRight("…", inner), Style: render.Style{Fg: t.Comment, Bg: t.BgFloat}},
 		{Text: " │", Style: border},
 	}
 	out := append([]render.StyledLine{}, box[:n-2]...)

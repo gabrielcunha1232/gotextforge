@@ -103,7 +103,7 @@ func TestDiagnosticosNaTela(t *testing.T) {
 	for _, s := range f.Lines[2] {
 		if s.Style.Undercurl {
 			undercurled.WriteString(s.Text)
-			if s.Style.Sp != colRed {
+			if s.Style.Sp != ThemeGo.Red {
 				t.Errorf("sublinhado do erro deveria ser vermelho, veio %+v", s.Style.Sp)
 			}
 		}
@@ -116,10 +116,10 @@ func TestDiagnosticosNaTela(t *testing.T) {
 	if !strings.Contains(text, "● cannot use \"texto\" as int") || strings.Contains(text, "segunda linha") {
 		t.Errorf("virtual text da linha 3 = %q", text)
 	}
-	if f.Lines[2][0].Style.Fg != colRed {
+	if f.Lines[2][0].Style.Fg != ThemeGo.Red {
 		t.Errorf("numero da linha com erro deveria ser vermelho")
 	}
-	if f.Lines[3][0].Style.Fg != colYellow {
+	if f.Lines[3][0].Style.Fg != ThemeGo.Yellow {
 		t.Errorf("numero da linha com aviso deveria ser amarelo")
 	}
 
@@ -329,7 +329,7 @@ func TestStatusDoServidor(t *testing.T) {
 		t.Errorf("erro do servidor: %q", st.Text())
 	}
 	for _, s := range st {
-		if strings.Contains(s.Text, "gopls!") && s.Style != styleStatusError {
+		if strings.Contains(s.Text, "gopls!") && s.Style != ThemeGo.statusError() {
 			t.Errorf("indicador de erro deveria ser vermelho")
 		}
 	}
@@ -386,8 +386,8 @@ func TestHoverTitulosMarkdown(t *testing.T) {
 }
 
 func TestJanelaCortadaMostraReticencias(t *testing.T) {
-	box := newHoverPopup(strings.Repeat("linha\n\n", 10)).render(20)
-	small := shrinkBox(box, 5)
+	box := newHoverPopup(strings.Repeat("linha\n\n", 10)).render(&ThemeGo, 20)
+	small := ThemeGo.shrinkBox(box, 5)
 	if len(small) != 5 {
 		t.Fatalf("shrinkBox(5) devolveu %d linhas", len(small))
 	}

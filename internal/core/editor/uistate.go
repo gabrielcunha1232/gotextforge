@@ -14,6 +14,7 @@ const uiTerminalLines = 2000
 
 type UIState struct {
 	Mode     string
+	Theme    string
 	Focus    string
 	Root     string
 	Tabs     []UITab
@@ -118,6 +119,7 @@ type UIStatus struct {
 func (e *Editor) UI() UIState {
 	return UIState{
 		Mode:     modeNames[e.mode],
+		Theme:    e.theme.Name,
 		Focus:    e.focusName(),
 		Root:     e.projectRoot(),
 		Tabs:     e.uiTabs(),

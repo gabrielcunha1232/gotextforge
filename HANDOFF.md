@@ -2,11 +2,24 @@
 
 > Documento de contexto para qualquer sessão futura (nova conversa de IA ou retomada depois de pausa). **Leia este arquivo antes de tudo**, depois o `ROADMAP.md`.
 
-## Estado atual (atualizado em 2026-11-16)
+## Estado atual (atualizado em 2026-11-19)
 
-> **Para a próxima sessão:** o **MS7 (spike do canvas no Wails v3) está concluído e aprovado** — veja "✓ Fase 2 — MS7" logo abaixo. O **MS8** (moldura do desktop no estilo do protótipo) está **concluído** — veja "Contrato do MS8" e os passos 1 a 8 lá. **MS8 concluído. Próximo: MS9 (integração e polimento, distribuição binária) — começar pedindo ao humano a lista de prioridades.**
+> **Para a próxima sessão:** o **MS7 (spike do canvas no Wails v3) está concluído e aprovado** — veja "✓ Fase 2 — MS7" logo abaixo. O **MS8** (moldura do desktop no estilo do protótipo) está **concluído** — veja "Contrato do MS8" e os passos 1 a 8 lá. Temas Go + Retrô flat concluídos em 2026-11-19 (veja a seção logo abaixo). **MS8 concluído. Próximo: MS9 (integração e polimento, distribuição binária) — começar pedindo ao humano a lista de prioridades.**
 
-## Em andamento — Temas: Go + Retrô flat (MS9, aprovado em 2026-11-19)
+## ✓ Temas: Go + Retrô flat (MS9, aprovado e CONCLUÍDO em 2026-11-19)
+
+**Como ficou (os 5 passos feitos; o humano pediu que a IA implementasse):**
+- `theme.go`: `type Theme` (cores + `Syntax` + `Modes` + `Logo` do degradê da tela inicial + `PaintBg` + `OnAccent`/`OnDark`), `ThemeGo` (valores idênticos aos antigos) e `ThemeRetro`; `themes`, `ThemeNames()`, `Editor.SetTheme(nome) bool`, `Editor.Theme()`. Os antigos `styleXxx` viraram métodos (`t.lineNr()`, `t.statusC()`, `t.search()`…), e as funções soltas de cor viraram métodos do `*Theme` (`kindColor`, `severityColor`, `dockerStateColor`, `selBg`, `finderRow`, `gradient`, `terminalLineStyle`, `shrinkBox`, `applyDiagnostics`); `hoverPopup.render(th, …)` recebe o tema. **Não existe mais cor global no pacote**: em método do `Editor` use `e.theme.X`.
+- **Texto sobre fundo colorido usa `t.on(bg)`** (badge do modo, cabeçalhos TERMINAL/DOCKER, busca atual): escolhe entre `OnAccent` e `OnDark` pelo maior contraste (WCAG). O tema Go não define `OnDark`, então continua sempre com a tinta escura (testado).
+- **Contraste testado** (`theme_test.go`): todo texto do retrô tem contraste ≥ 4,0 sobre o creme **e** sobre a linha do cursor; idem para os rótulos. O teste já pegou cores fracas (laranja, mostarda, teal claro) — por isso o retrô usa tons escuros como texto e os vivos só como fundo.
+- `:colorscheme`/`:colo` (sem nome mostra o atual; nome desconhecido → `E185`). Trocar de tema **não** faz o `Esc` automático das ações de clique (não atrapalha o insert).
+- **TUI:** com `PaintBg`, o `View` define `BackgroundColor` **e** `ForegroundColor` (OSC 11/10). O fg é obrigatório: o texto sem estilo (`KindPlain`) usaria a cor clara do terminal e sumiria no creme. O Bubble Tea desfaz os dois ao voltar para `nil` e ao sair.
+- **Desktop:** `UIState.Theme`; `EditorService.SetTheme` (via `act`) e `Theme()` agora com o mutex. No `bridge.ts`, quando `ui.Theme` muda, `loadTheme(nome)` refaz as `--c-*`, põe `data-theme` no `<html>` e chama `renderer.setColors(bg, fg)`, que redesenha o último quadro (o canvas não tem mais `BG`/`FG` fixos). Só a resposta do pedido de tema mais recente é aplicada (as chamadas podem voltar fora de ordem). Paleta ganhou `on-accent`.
+- **CSS:** bloco `:root[data-theme="retro"]` no fim do `styles.css` com as constantes `--r-*` do HTML de referência; cantos retos, bordas de 3px, sombras duras, faixa `.stripes` (o elemento existe sempre e só aparece no retrô), terminal escuro com VT323 verde, botões com "afundar" no `:active`. Fontes de `@fontsource/vt323` e `@fontsource/space-mono` (só `latin`, que cobre o português; ~85 KB no `dist`).
+- Verificado com print real (roteiro temporário no `bench.ts`, já restaurado): retrô completo, e retrô → go volta idêntico ao original.
+- **Pendências pequenas:** variante marrom (escura) do retrô; lembrar o tema entre aberturas (precisa de um arquivo de config); a cor de fundo da janela do Wails (`desktop.go`) continua escura, então redimensionar no retrô pode piscar escuro por um instante.
+
+## Contrato dos temas (aprovado em 2026-11-19)
 
 **Pedido do humano:** um estilo "flat design retrô" alternável com o tema atual, no terminal e no desktop. Referência visual: o HTML "RETRO-DOCK 86" que o humano colou (creme `#f1e4c8`, painel `#fbf3de`, tinta `#2b2118`, laranja `#e8643c`, mostarda `#f2b134`, teal `#2a9d8f`, vermelho `#c8372d`; bordas de 3px na cor da tinta, sombra dura deslocada `4px 4px 0`, cantos retos, títulos em VT323, interface em Space Mono, faixa laranja/mostarda/teal).
 

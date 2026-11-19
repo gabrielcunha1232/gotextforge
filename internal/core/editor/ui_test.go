@@ -35,8 +35,8 @@ func TestGutterNumerosRelativos(t *testing.T) {
 			t.Errorf("gutter da linha %d = %q, esperava %q", tt.row, got, tt.want)
 		}
 	}
-	if f.Lines[5][0].Style != styleCursorLineNr {
-		t.Errorf("numero da linha atual deveria usar styleCursorLineNr")
+	if f.Lines[5][0].Style != ThemeGo.cursorLineNr() {
+		t.Errorf("numero da linha atual deveria usar ThemeGo.cursorLineNr()")
 	}
 }
 
@@ -54,7 +54,7 @@ func TestLinhaDoCursorOcupaALarguraToda(t *testing.T) {
 		t.Errorf("linha do cursor tem largura %d, esperava 80", w)
 	}
 	for _, s := range f.Lines[0][1:] {
-		if s.Style.Bg != colBgHighlight {
+		if s.Style.Bg != ThemeGo.BgHighlight {
 			t.Errorf("span %q da linha do cursor sem o fundo de destaque", s.Text)
 		}
 	}
@@ -83,8 +83,8 @@ func TestStatusLineMostraErroEmVermelho(t *testing.T) {
 	for _, s := range f.Status {
 		if strings.Contains(s.Text, "E492") {
 			found = true
-			if s.Style != styleStatusError {
-				t.Errorf("mensagem de erro com estilo %+v, esperava styleStatusError", s.Style)
+			if s.Style != ThemeGo.statusError() {
+				t.Errorf("mensagem de erro com estilo %+v, esperava ThemeGo.statusError()", s.Style)
 			}
 		}
 	}

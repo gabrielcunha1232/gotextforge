@@ -54,9 +54,9 @@ func TestBusca(t *testing.T) {
 func searchStyles(f render.Frame, row int) (normal, current int) {
 	for _, s := range f.Lines[row] {
 		switch {
-		case s.Style.Bg == styleSearch.Bg:
+		case s.Style.Bg == ThemeGo.search().Bg:
 			normal += len([]rune(s.Text))
-		case s.Style.Bg == styleSearchCurrent.Bg:
+		case s.Style.Bg == ThemeGo.searchCurrent().Bg:
 			current += len([]rune(s.Text))
 		}
 	}

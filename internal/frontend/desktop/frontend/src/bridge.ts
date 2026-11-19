@@ -40,6 +40,7 @@ let pendingResize: "start" | "resize" | null = null;
 let busy = false;
 let lastSeq = 0;
 let lastUISeq = 0;
+let themeName = "";
 
 function grid() {
   const c = canvas!;
@@ -54,6 +55,10 @@ function show(frame: Frame) {
   if (frame.ui && frame.seq > lastUISeq) {
     lastUISeq = frame.seq;
     uiStore.set(frame.ui);
+    if (frame.ui.Theme !== themeName) {
+      themeName = frame.ui.Theme;
+      loadTheme(themeName);
+    }
   }
   if (frame.seq <= lastSeq || !renderer) {
     return;
@@ -135,11 +140,22 @@ export function wheelText(deltaY: number, deltaMode: number) {
   }
 }
 
-export async function loadTheme() {
+let themeReq = 0;
+
+export async function loadTheme(name?: string) {
+  const req = ++themeReq;
   const theme = await call<Record<string, string>>("Theme");
-  for (const [name, color] of Object.entries(theme)) {
-    document.documentElement.style.setProperty(`--c-${name}`, color);
+  if (req !== themeReq) {
+    return;
   }
+  const root = document.documentElement;
+  for (const [key, color] of Object.entries(theme)) {
+    root.style.setProperty(`--c-${key}`, color);
+  }
+  if (name) {
+    root.dataset.theme = name;
+  }
+  renderer?.setColors(theme["bg"], theme["fg"]);
 }
 
 export function attachEditor(c: HTMLCanvasElement, ta: HTMLTextAreaElement) {

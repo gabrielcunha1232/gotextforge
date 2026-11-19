@@ -174,11 +174,11 @@ func (e *Editor) finderBox(rows int) ([]render.StyledLine, int, int) {
 	inner := w - 4
 	listRows := h - 4
 
-	border := render.Style{Fg: colBorder, Bg: colBgFloat}
-	fill := render.Style{Bg: colBgFloat}
+	border := render.Style{Fg: e.theme.Border, Bg: e.theme.BgFloat}
+	fill := render.Style{Bg: e.theme.BgFloat}
 	title := f.title
 	top := "╭─" + title + strings.Repeat("─", max(w-3-len([]rune(title)), 0)) + "╮"
-	box := []render.StyledLine{{{Text: top, Style: render.Style{Fg: colBorder, Bg: colBgFloat, Bold: true}}}}
+	box := []render.StyledLine{{{Text: top, Style: render.Style{Fg: e.theme.Border, Bg: e.theme.BgFloat, Bold: true}}}}
 
 	count := fmt.Sprintf("%d/%d", len(f.matches), len(f.items))
 	if f.truncated {
@@ -186,14 +186,14 @@ func (e *Editor) finderBox(rows int) ([]render.StyledLine, int, int) {
 	}
 	q := sanitize(string(f.query))
 	promptLine := render.StyledLine{
-		{Text: "> ", Style: render.Style{Fg: colOrange, Bg: colBgFloat, Bold: true}},
-		{Text: q, Style: render.Style{Fg: colFg, Bg: colBgFloat}},
+		{Text: "> ", Style: render.Style{Fg: e.theme.Orange, Bg: e.theme.BgFloat, Bold: true}},
+		{Text: q, Style: render.Style{Fg: e.theme.Fg, Bg: e.theme.BgFloat}},
 	}
 	gap := inner - promptLine.Width() - len(count)
 	if gap > 0 {
 		promptLine = append(promptLine,
 			render.Span{Text: strings.Repeat(" ", gap), Style: fill},
-			render.Span{Text: count, Style: render.Style{Fg: colComment, Bg: colBgFloat}})
+			render.Span{Text: count, Style: render.Style{Fg: e.theme.Comment, Bg: e.theme.BgFloat}})
 	}
 	box = append(box, frameRow(promptLine, inner, border, fill))
 	box = append(box, render.StyledLine{{Text: "├" + strings.Repeat("─", w-2) + "┤", Style: border}})
@@ -205,17 +205,17 @@ func (e *Editor) finderBox(rows int) ([]render.StyledLine, int, int) {
 	total := f.rowCount()
 	for i := first; i < first+listRows; i++ {
 		var line render.StyledLine
-		bg := colBgFloat
+		bg := e.theme.BgFloat
 		if i == f.sel {
-			bg = colBgSel
+			bg = e.theme.BgSel
 		}
 		switch {
 		case i < len(f.matches):
-			line = finderRow(f.matches[i], i == f.sel, bg)
+			line = e.theme.finderRow(f.matches[i], i == f.sel, bg)
 		case i < total:
 			line = render.StyledLine{
 				{Text: "  ", Style: render.Style{Bg: bg}},
-				{Text: "+ criar " + sanitize(strings.TrimSpace(string(f.query))), Style: render.Style{Fg: colGreen, Bg: bg, Bold: i == f.sel}},
+				{Text: "+ criar " + sanitize(strings.TrimSpace(string(f.query))), Style: render.Style{Fg: e.theme.Green, Bg: bg, Bold: i == f.sel}},
 			}
 		}
 		box = append(box, frameRow(line, inner, border, render.Style{Bg: bg}))
@@ -233,7 +233,7 @@ func frameRow(content render.StyledLine, inner int, border, fill render.Style) r
 	return append(row, render.Span{Text: " │", Style: border})
 }
 
-func finderRow(m fuzzy.Match, selected bool, bg render.Color) render.StyledLine {
+func (t *Theme) finderRow(m fuzzy.Match, selected bool, bg render.Color) render.StyledLine {
 	runes := []rune(sanitize(m.Text))
 	nameStart := 0
 	for i := len(runes) - 1; i >= 0; i-- {
@@ -250,14 +250,14 @@ func finderRow(m fuzzy.Match, selected bool, bg render.Color) render.StyledLine 
 	if selected {
 		marker = "▶ "
 	}
-	line := render.StyledLine{{Text: marker, Style: render.Style{Fg: colOrange, Bg: bg}}}
+	line := render.StyledLine{{Text: marker, Style: render.Style{Fg: t.Orange, Bg: bg}}}
 	for i, r := range runes {
-		style := render.Style{Fg: colComment, Bg: bg}
+		style := render.Style{Fg: t.Comment, Bg: bg}
 		if i >= nameStart {
-			style = render.Style{Fg: colFg, Bg: bg, Bold: selected}
+			style = render.Style{Fg: t.Fg, Bg: bg, Bold: selected}
 		}
 		if hit[i] {
-			style = render.Style{Fg: colOrange, Bg: bg, Bold: true}
+			style = render.Style{Fg: t.Orange, Bg: bg, Bold: true}
 		}
 		line = append(line, render.Span{Text: string(r), Style: style})
 	}
