@@ -6,6 +6,21 @@
 
 > **Para a próxima sessão:** o **MS7 (spike do canvas no Wails v3) está concluído e aprovado** — veja "✓ Fase 2 — MS7" logo abaixo. O **MS8** (moldura do desktop no estilo do protótipo) está **concluído** — veja "Contrato do MS8" e os passos 1 a 8 lá. **MS8 concluído. Próximo: MS9 (integração e polimento, distribuição binária) — começar pedindo ao humano a lista de prioridades.**
 
+## Em andamento — Temas: Go + Retrô flat (MS9, aprovado em 2026-11-19)
+
+**Pedido do humano:** um estilo "flat design retrô" alternável com o tema atual, no terminal e no desktop. Referência visual: o HTML "RETRO-DOCK 86" que o humano colou (creme `#f1e4c8`, painel `#fbf3de`, tinta `#2b2118`, laranja `#e8643c`, mostarda `#f2b134`, teal `#2a9d8f`, vermelho `#c8372d`; bordas de 3px na cor da tinta, sombra dura deslocada `4px 4px 0`, cantos retos, títulos em VT323, interface em Space Mono, faixa laranja/mostarda/teal).
+
+**Decisões do humano (2026-11-19):** só a variante **creme** (a marrom fica para depois); **não lembrar** o tema entre aberturas (sempre abre no Go; config fica para outro passo); **Space Mono/VT323 só na moldura**, o canvas continua em Cascadia Mono.
+
+**Contrato:**
+1. **Tema como valor, não global:** struct `Theme` (cores, estilos de sintaxe, cores dos modos) com `ThemeGo` (idêntico ao atual) e `ThemeRetro`. O `Editor` guarda o tema atual; as funções soltas que usam cor (`kindColor`, `severityColor`, `dockerStateColor`, `selBg`, `finderRow`, `gradient`, `terminalLineStyle`, `hoverPopup.render`, `shrinkBox`) passam a receber o tema. `Palette()` vira método do tema.
+2. **Trocar é ação do core:** `:colorscheme go|retro` e `SetTheme(nome)` (para o clique). Nome desconhecido → mensagem de erro na linha de comando.
+3. **TUI:** só a paleta muda; no retrô, `View.BackgroundColor` (Bubble Tea v2, OSC 11) pinta o fundo do terminal de creme. No tema Go continua `nil` (fundo do terminal do usuário).
+4. **Desktop:** o nome do tema vai no `UI()`; quando muda, o JS chama `Theme()` de novo, refaz as `--c-*` e põe `data-theme="retro"` no `<html>`. A "forma" retrô fica num bloco `[data-theme="retro"]` do `styles.css`. Fontes empacotadas (`@fontsource/vt323`, `@fontsource/space-mono`, OFL), nada de Google Fonts (app offline). Botão TEMA na barra de cima.
+5. **Contraste:** mostarda `#f2b134` só como fundo (badge de modo, busca); como texto, usar um tom escuro dele.
+
+**Passos:** (1) extrair `Theme` com o tema atual — refatoração pura, tela idêntica, testes verdes · (2) `ThemeRetro` + `:colorscheme`, funcionando no TUI · (3) tema no `UI()` + recarregar `--c-*` no desktop · (4) CSS de forma retrô + fontes · (5) botão TEMA.
+
 ## ✓ Fase 2 — MS7 (CONCLUÍDO em 2026-11-16)
 
 **O que existe:** `cmd/gotextforge-desktop` (mesmo `main` do terminal, chamando `desktop.Run`) e `internal/frontend/desktop/`:
